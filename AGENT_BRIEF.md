@@ -1,4 +1,4 @@
-agentB-server-robustness — Sprint 5
+agentA-frontend-polish — Sprint 6
 
 Previous Sprint Summary
 ─────────────────────────────────────────
@@ -64,10 +64,10 @@ Previous Sprint Summary
 Sprint-Level Context
 
 Goal
-- Fix graceful handling of stale history entries when the server restarts and conversations are lost (B-006)
-- Add markdown heading rendering for # ## ### syntax (F-006)
-- Add markdown unordered list rendering for - item syntax (F-007)
-- Add server-side request logging and graceful shutdown (server robustness)
+- Complete markdown rendering: ordered lists (F-008) and horizontal rules (F-009)
+- Fix copy button overlap on narrow bubbles (B-005)
+- Make layout responsive for mobile screens (F-010)
+- Add server stats endpoint and conversation count endpoint
 
 Constraints
 - No two agents may modify the same files
@@ -76,17 +76,20 @@ Constraints
 
 
 Objective
-- Add request logging and graceful shutdown to the server
+- Complete the markdown renderer and make the UI responsive on mobile
 
 Tasks
-- Open server.js and read it fully before making changes
-- Add request logging middleware: before app.use(express.json()), add a simple middleware that logs `[${new Date().toISOString()}] ${req.method} ${req.url}` to console for every request. Use app.use() with a function that calls next().
-- Add graceful shutdown: after app.listen(), add process.on('SIGTERM', ...) and process.on('SIGINT', ...) handlers that call server.close() and then process.exit(0). Store the return value of app.listen() in a variable named `server` so it can be closed.
-- Add a conversation cleanup: add a route DELETE /api/conversations which clears ALL conversations from the Map (useful for testing). Returns { ok: true, cleared: count }.
-- Commit with: feat: request logging, graceful shutdown, bulk conversation clear endpoint
+- Open public/index.html and read it fully before making changes
+- Fix B-005: Increase padding-right on `.msg.claude .bubble` from whatever it currently is to at least 56px, so the always-visible copy button never overlaps text.
+- Add F-008 (ordered lists): In the renderTextInto() function, add support for numbered lists. Detect contiguous lines matching `/^\d+\. /` (e.g., "1. First", "2. Second"). Group them into an `<ol>` element with `<li>` children. Apply inline formatting (bold/italic/code) to each list item. A blank line or non-list line ends the list.
+- Add F-009 (horizontal rules): In renderTextInto(), detect lines that are exactly `---` or `***` (after trim) and replace them with an `<hr>` element. Add CSS for `hr { border: none; border-top: 1px solid var(--border); margin: 8px 0; }`.
+- Add F-010 (mobile responsive): Add CSS media query `@media (max-width: 600px)` that: hides the sidebar (`#sidebar { display: none; }`), makes the chat area use full width, and adjusts the header to wrap on small screens. Also add a hamburger button `☰` that toggles the sidebar on mobile (toggling a `.sidebar-open` class on `#sidebar` that sets `display: flex` and position: fixed + full-height overlay). The hamburger button should appear in the header only on mobile (hide with CSS on desktop).
+- Commit with: feat: ordered lists, horizontal rules, mobile responsive layout, copy button fix (F-008, F-009, F-010, B-005)
 
 Acceptance Criteria
-- Every HTTP request is logged to stdout with method, URL, and ISO timestamp
-- SIGTERM and SIGINT trigger graceful server close
-- DELETE /api/conversations (no id) clears all conversations and returns count
-- DELETE /api/conversations/:id (existing) still works per individual conversation
+- Copy button no longer overlaps text (padding-right >= 56px)
+- Numbered lists render as <ol><li> elements
+- --- and *** on their own line render as <hr>
+- On screens <= 600px the sidebar is hidden and a hamburger button appears
+- Hamburger button toggles sidebar on mobile
+- Desktop layout is unchanged
