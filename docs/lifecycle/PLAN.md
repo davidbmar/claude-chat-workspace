@@ -1,81 +1,60 @@
-# Plan: Claude Chat Workspace
+# Plan
 
-## What Is Built (v1 — Sprint 1–8 Complete)
-
-All core functionality is implemented and Playwright-verified. The app runs locally via Docker Compose.
-
-### Server (server.js)
-- Express on port 8080, node:20-alpine (~100MB image)
-- `POST /api/chat` — SSE streaming; per-request model selection; system prompt via Anthropic `system` parameter
-- `GET/DELETE /api/conversations/:id` — conversation history management
-- `DELETE /api/conversations` — bulk clear
-- `GET /api/stats` — uptime, conversation count, request count
-- `GET /api/health` — k8s readiness probe
-- Request logging, graceful SIGTERM/SIGINT shutdown
-- Reads `CLAUDE_MODEL` and `SYSTEM_PROMPT` from env vars
-
-### Frontend (public/index.html)
-- Single-file SPA — HTML + inline CSS + vanilla JS, no build step
-- Dark theme, SSE token streaming with animated loading dots
-- Model selector (Haiku / Sonnet / Opus) — persisted in localStorage
-- Chat history sidebar with localStorage persistence, click-to-reload, × delete, mobile hamburger toggle
-- Copy button below each Claude bubble (never overlaps text — flexbox column layout)
-- Character count label after each response
-- New Chat button — generates new UUID, clears thread
-- DOM-based markdown renderer (no innerHTML/XSS): fenced code blocks, inline code, headings, bold, italic, unordered/ordered lists, horizontal rules, GFM pipe tables
-
-### Infrastructure
-- `Dockerfile`, `docker-compose.yml`, `.env.example`, `build-and-push.sh`
-- ECR repo: `294499146847.dkr.ecr.us-east-1.amazonaws.com/automation-ai/claude-chat-workspace:latest`
+## Problem
+The portal catalog has one item: Claude Code (full VS Code workspace). Users who want a simple conversation with Claude have no lightweight option. We need a second catalog item — "Claude Chat" — that spins up a clean, minimal chat interface using the same portal/k8s infrastructure.
 
 ## Appetite
+Small-to-medium batch. The core chat server and UI are complete (Sprints 1–8). Remaining work is primarily: production deploy to ECR, portal catalog integration (appId routing), and quality-of-life improvements. No new infrastructure is needed.
 
-**Remaining work is sprint-sized.** The dev implementation is feature-complete. The next action is production deployment (1 sprint). Everything after that is additive.
+## Solution Sketch
+A Node.js Express server with SSE streaming serves a single-file SPA chat UI. The server maintains per-session conversation history in memory. The Docker image uses node:20-alpine (~100MB). Portal backend routes `appId=claude-chat` to this image instead of the code-server workspace image. The frontend uses a DOM-based markdown renderer (no innerHTML, XSS-safe) and stores history in localStorage.
+
+**What is already built (post Sprint 8):**
+- Express server: `/api/chat` (SSE), `/api/conversations/:id` (GET/DELETE), `/api/health`, `/api/stats`
+- Frontend: dark theme SPA, model selector (Haiku/Sonnet/Opus), chat history sidebar, copy button, character count
+- Markdown: headings, bold, italic, bold+italic, code blocks, inline code, ordered/unordered lists, horizontal rules, GFM pipe tables
+- Docker: Dockerfile, docker-compose.yml, .env.example, build-and-push.sh
+
+## Market Fit Analysis
+Internal tool — no external market to validate. The demand is clear: every team member who has used Claude has expressed wanting a simpler chat interface. The code workspace is actively used but treated as "too much" for simple tasks. Direct replacement for ad-hoc Claude.ai usage within the internal network.
+
+## Differentiation Strategy
+Integrated into the existing portal auth/infra with zero friction. No separate login, no separate API key management. Model selector lets users choose the right Claude tier for the task. Clean, distraction-free UI that doesn't fight for attention with IDE chrome.
 
 ## Rabbit Holes
+- **Persistent storage**: Adding a database for conversation persistence is tempting but not needed for v1. In-memory storage that resets on restart is acceptable.
+- **Multi-user features**: Shared rooms, collaborative threads — defer indefinitely.
+- **File/image upload**: Technically possible with the Anthropic API but scope-creep for a chat-first tool.
+- **LLM backend swap**: The adapter is in place; don't build a configuration UI for it now.
 
-- **Full markdown library (marked.js, etc.)** — the DOM-based renderer covers all practical cases safely. Adding a library introduces XSS surface and a dependency for marginal gain.
-- **WebSockets** — SSE is correct for unidirectional streaming. WebSockets only become relevant for multi-user shared rooms.
-- **App-level auth** — Traefik/ALB handles access control. Don't build auth into the chat server until there's a compliance requirement.
-- **Build pipeline / bundler** — the single HTML file is the right tradeoff at this scale.
+## No-Gos
+- No database for this iteration — in-memory only
+- No authentication beyond network/Traefik layer
+- No file or image upload
+- No multi-user shared rooms
+- No LLM provider selection UI (adapter is internal only)
 
-## No-Gos (v1)
-
-- No multi-user shared chat rooms
-- No file/image upload
-- No separate database service
-- No conversation persistence (resets on pod restart — planned for v2)
-
-## Sprint Candidates (Next)
+## Sprint Candidates
 
 ### Sprint 9 — Production Deploy
-Ship v1 to production:
-- Run `build-and-push.sh` to build and push `claude-chat-workspace:latest` to ECR
-- Set `CLAUDE_CHAT_IMAGE` env var on all portal EC2s
-- Redeploy portal via `deploy-all-portals.sh`
-- Smoke test end-to-end: portal catalog → launch → chat → streaming response
+- Build and push Docker image to ECR (`build-and-push.sh`)
+- Set `CLAUDE_CHAT_IMAGE` env var on portal EC2s
+- Redeploy portal to pick up the env var
+- Verify catalog shows "Claude Chat" as second option
+- End-to-end smoke test: launch from portal, send message, see streaming response
 
-### Sprint 10 — Conversation Persistence
-Survive pod restarts:
-- Option A: write conversation JSON to a k8s PersistentVolumeClaim (one-pod, simplest)
-- Option B: write to S3 keyed by `conversationId` (portable, survives pod deletion)
-- "Resume last conversation" on page load
-- Conversation list sidebar already exists — just needs server-side backing
+### Sprint 10 — Portal Catalog Integration
+- `portal/src/k8s.js`: add `appId` parameter to `createWorkspacePod()`; use `CLAUDE_CHAT_IMAGE` when `appId === 'claude-chat'`; skip postStart hook for chat pods
+- `portal/src/routes/workspaces.js`: accept `appId` in POST body, pass to k8s
+- `portal/public/js/catalog.js`: add `claude-chat` entry to `APPS` array; hide template selector for chat app
 
-### Sprint 11 — LLM Backend Swap
-Demonstrate the adapter pattern:
-- Add `CLAUDE_CHAT_BACKEND=anthropic|ollama|bedrock` env var
-- Implement Ollama adapter for on-prem / no-API-key deployment
-- Implement Bedrock adapter using IAM instance role
+### Sprint 11 — Conversation Persistence (Optional)
+- Add SQLite or file-based storage for conversations
+- Conversations survive server restarts
+- History sidebar shows conversations from previous sessions
 
-### Sprint 12 — Export + Sharing
-Useful for knowledge workers:
-- Download conversation as `.md` or `.txt`
-- Copy full thread to clipboard as formatted markdown
-- Optional: shareable read-only URL (requires persistence first)
-
-### Sprint 13 — System Prompt UI
-Make personas configurable without code changes:
-- Toggle in header to show/hide active system prompt
-- Per-team persona set via `SYSTEM_PROMPT` env var (already supported in server)
-- UI indicator when a custom system prompt is active
+### Sprint 12 — UX Improvements
+- Keyboard shortcut reference (Cmd+K modal or tooltip)
+- Export conversation as Markdown
+- Token/cost estimate display per message
+- Session title auto-generation (first user message truncated)
