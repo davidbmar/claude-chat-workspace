@@ -1,4 +1,4 @@
-agentB-char-count — Sprint 7
+agentB-table-renderer — Sprint 8
 
 Previous Sprint Summary
 ─────────────────────────────────────────
@@ -64,26 +64,27 @@ Previous Sprint Summary
 Sprint-Level Context
 
 Goal
-- Add delete button to history sidebar entries (F-011)
-- Add character count display below Claude responses (F-012 frontend)
-- Add character count to the SSE stream done event (F-012 backend)
+- Fix markdown table rendering (B-007): GFM pipe-table syntax renders as raw text
+- Fix model selection persistence (B-008): model selector resets to Sonnet on page reload
+- Fix copy button overlap on short responses (B-005): needs minimum padding-right ~56px
 
 Constraints
 - No two agents may modify the same files
-- Agent A owns: public/index.html
-- Agent B owns: server.js
+- Agent A owns: public/index.html (model persistence + copy button overlap fix)
+- Agent B owns: public/index.html table renderer — NOTE: agents must coordinate; agentA commits first, agentB must git pull before editing
 
 
 Objective
-- Include character count in the SSE done event and expose response stats
+- Add GFM markdown table rendering to the DOM-based markdown renderer in public/index.html
 
 Tasks
-- Open server.js and read it fully before making changes
-- In the /api/chat route handler, after the streaming loop completes and `assistantText` is populated, modify the done event to include the character count: instead of `res.write(\`data: ${JSON.stringify({ done: true })}\n\n\`)`, send `res.write(\`data: ${JSON.stringify({ done: true, chars: assistantText.length })}\n\n\`)`.
-- Also add the word count: `words: assistantText.split(/\s+/).filter(Boolean).length` to the done event payload.
-- Commit with: feat: include char and word count in SSE done event (F-012 backend)
+- Read public/index.html and understand the existing renderTextInto() DOM-based markdown renderer
+- Add table block detection: a contiguous group of lines where line 0 matches /^\|.+\|$/ and line 1 matches /^\|[-| :]+\|$/ — this is a GFM table
+- Parse header cells from line 0, skip line 1 (separator), parse data rows from remaining lines
+- Build table as DOM elements using createElement only (no innerHTML): table > thead > tr > th for headers, tbody > tr > td for data rows; set cell text via textContent
+- Insert the table as a block-level element alongside existing code blocks and paragraph text
+- Commit with: feat: GFM table rendering in DOM markdown renderer (B-007)
 
 Acceptance Criteria
-- The SSE done event includes `chars: N` where N is the length of the assistant response text
-- The SSE done event includes `words: N` where N is the approximate word count
-- All existing functionality (streaming tokens, error handling) unchanged
+- A markdown table renders as an HTML table element, not raw pipe-delimited text
+- Existing rendering (headings, bold, italic, code blocks, lists) still works correctly

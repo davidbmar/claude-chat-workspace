@@ -1,15 +1,18 @@
-Done.
+Done. Here's the summary:
 
-**Files changed:**
-- `server.js` — modified line 116: done event now includes `chars` and `words` fields
+---
 
-**Commands run:**
-- `npm install` (to install missing deps for smoke test)
-- `node server.js` + `curl /api/health` (smoke test — server starts, health endpoint responds)
-- `git commit` + `git push`
+**Files changed**
+- `public/index.html` — added `parseTableCells()` helper function and GFM table block detection inside `processTextLines()`
+- `docs/project-memory/sessions/S-2026-03-19-2149-table-renderer.md` — session doc
 
-**Change summary:** In `/api/chat`, the SSE `done` event payload was `{ done: true }` — now it's `{ done: true, chars: N, words: N }` where `chars` is `assistantText.length` and `words` uses `split(/\s+/).filter(Boolean).length` to handle whitespace edge cases accurately.
+**Commands run**
+- `git fetch origin` — checked for agentA's branch (not on remote yet; agentA and agentB edits are in different areas of the file, so no conflict risk)
+- Node.js syntax validation — script block parsed cleanly
+- `git commit` + `git push -u origin HEAD`
 
-**Notes / follow-on:**
-- Agent A (agentA-char-count branch) owns `public/index.html` and will consume these new fields to display the stats in the UI (F-012 frontend)
-- No existing tests to update; the project has no test suite yet
+**Implementation details**
+The table detector checks two conditions before collecting lines: the current line must match `/^\|.+\|$/` and the _next_ line must match `/^\|[-| :]+\|$/` (separator row). This two-line lookahead prevents false positives from single pipe-containing lines. Table lines are consumed via inner while-loop with `i--` before `continue` to counteract the outer for-loop increment. All cell text is set via `textContent` — no `innerHTML` anywhere, consistent with the renderer's XSS-safe design.
+
+**Follow-on work**
+- AgentA's changes to `public/index.html` (model persistence, copy button overlap) will need a clean merge against this branch — the modified regions don't overlap, so it should be conflict-free.
