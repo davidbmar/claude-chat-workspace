@@ -604,7 +604,8 @@ fi
 # Ensure file descriptor limit is high enough for concurrent agent sessions
 MIN_FD=10240
 CURRENT_FD=$(ulimit -n)
-if [ "$CURRENT_FD" -lt "$MIN_FD" ]; then
+# macOS returns "unlimited" — treat that as sufficient
+if [ "$CURRENT_FD" != "unlimited" ] && [ "$CURRENT_FD" -lt "$MIN_FD" ]; then
   ulimit -n "$MIN_FD" 2>/dev/null || true
   NEW_FD=$(ulimit -n)
   if [ "$NEW_FD" -lt "$MIN_FD" ]; then
