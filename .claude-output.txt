@@ -1,16 +1,14 @@
-Done.
-
 ---
 
-**Files changed**
-- `server.js` — added `startTime`, `requestCount`, middleware increment, and `GET /api/stats` route
-- `docs/project-memory/sessions/S-2026-03-19-2016-server-stats.md` — session doc
+**Files changed:**
+- `public/index.html` — added delete buttons to history entries, `deleteConversation()` function, SSE `done`/`chars` handling, and char count label display
+- `docs/project-memory/sessions/S-2026-03-19-2022-history-delete-charcount.md` — session doc
 
-**Commands run**
-- `node --check server.js` — syntax OK
-- `git commit` + `git push -u origin HEAD`
+**Commands run:**
+- `git pull` (branch not yet on remote)
+- `git add && git commit`
+- `git push -u origin HEAD`
 
-**Notes**
-- No test framework exists in the project (`package.json` has no `test` script); syntax check via `node --check` was used instead.
-- `GET /api/stats` returns: `{ uptime, conversationCount, messageCount, requestCount, version: "1.0.0" }` — all acceptance criteria satisfied.
-- `requestCount` includes the `/api/stats` call itself (counted in middleware before routing), which is the most accurate representation of total server traffic.
+**Notes / follow-on work:**
+- F-012 backend (agentB): `server.js` needs to emit `data: {"done":true,"chars":N}` at the end of the SSE stream for the char count label to populate. The frontend reads `data-charcount` which is only set when that event arrives — if agentB hasn't implemented it yet, the label simply won't appear (graceful degradation).
+- The DELETE `/api/conversations/:id` endpoint also needs to exist in `server.js` (agentB's scope).
