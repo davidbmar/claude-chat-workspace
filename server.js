@@ -19,12 +19,16 @@ const conversations = new Map();
 // To switch providers: replace only this function.
 // The conversation history format, SSE streaming, and UI are all backend-agnostic.
 // ---------------------------------------------------------------------------
-async function* streamResponse(messages) {
-  const stream = client.messages.stream({
-    model: process.env.CLAUDE_MODEL || 'claude-sonnet-4-6',
+async function* streamResponse(messages, model) {
+  const streamOptions = {
+    model: model || process.env.CLAUDE_MODEL || 'claude-sonnet-4-6',
     max_tokens: 4096,
     messages,
-  });
+  };
+  if (process.env.SYSTEM_PROMPT) {
+    streamOptions.system = process.env.SYSTEM_PROMPT;
+  }
+  const stream = client.messages.stream(streamOptions);
 
   for await (const event of stream) {
     if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
@@ -36,7 +40,7 @@ async function* streamResponse(messages) {
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 app.post('/api/chat', async (req, res) => {
-  const { message, conversationId } = req.body;
+  const { message, conversationId, model } = req.body;
   if (!message || !conversationId) {
     return res.status(400).json({ error: 'message and conversationId are required' });
   }
@@ -47,11 +51,6 @@ app.post('/api/chat', async (req, res) => {
   const history = conversations.get(conversationId);
   history.push({ role: 'user', content: message });
 
-  // Prepend system prompt as first user message when starting a new conversation
-  if (process.env.SYSTEM_PROMPT && history.length === 1) {
-    history.unshift({ role: 'user', content: '[System: ' + process.env.SYSTEM_PROMPT + ']' });
-  }
-
   // SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -60,7 +59,7 @@ app.post('/api/chat', async (req, res) => {
 
   let assistantText = '';
   try {
-    for await (const token of streamResponse(history)) {
+    for await (const token of streamResponse(history, model)) {
       assistantText += token;
       res.write(`data: ${JSON.stringify({ token })}\n\n`);
     }
