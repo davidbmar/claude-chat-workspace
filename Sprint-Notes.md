@@ -1,10 +1,10 @@
-# Sprint 4 — Agent Notes
+# Sprint 5 — Agent Notes
 
-*Started: 2026-03-19 20:05 UTC*
+*Started: 2026-03-19 20:09 UTC*
 
 Phase 1 Agents: 2
-- agentA-history-sidebar
-- agentB-conversations-api
+- agentA-markdown-and-history-fixes
+- agentB-server-robustness
 
 Phase 2 Agents: 0
 (none)
@@ -13,48 +13,51 @@ Automated summaries from each agent are appended below as they complete.
 
 ---
 
-## agentB-conversations-api
+## agentB-server-robustness
 
-*Completed: 2026-03-19 20:06 UTC*
+*Completed: 2026-03-19 20:10 UTC*
 
 **Files changed:**
-- `server.js` — updated `GET /api/conversations` handler to return `{ conversations: [{ id, messageCount, preview }] }` instead of `{ ids: [...] }`
-- `docs/project-memory/sessions/S-2026-03-19-2005-conversations-api-preview.md` — new session doc
+- `server.js` — added request logging middleware, graceful shutdown handlers, `DELETE /api/conversations` bulk clear route
+- `docs/project-memory/sessions/S-2026-03-19-2010-server-robustness.md` — session doc
 
 **Commands run:**
-- `git pull` (no upstream, skipped)
+- `git fetch origin` / `git pull`
+- `node --check server.js` (syntax OK)
 - `git add` + `git commit`
 - `git push -u origin HEAD`
 
 **Notes:**
-- No test suite exists in this repo; the change is straightforward and covered by the acceptance criteria in the brief.
-- `GET /api/conversations/:id` and `DELETE /api/conversations/:id` are unchanged.
-- Preview truncation uses `slice(0, 60)` with no ellipsis, matching the spec exactly.
+- The bulk `DELETE /api/conversations` route is placed before `DELETE /api/conversations/:id` — critical for Express route ordering so `/api/conversations` isn't matched as `id="conversations"`.
+- No test suite exists in this project; syntax check passed.
+- No follow-on work needed for this scope.
 
 
 ---
 
-## agentA-history-sidebar
+## agentA-markdown-and-history-fixes
 
-*Completed: 2026-03-19 20:07 UTC*
+*Completed: 2026-03-19 20:13 UTC*
 
-**Files changed:**
-- `public/index.html` — all UI changes (sidebar, layout, JS history logic, B-005 fix)
-- `docs/project-memory/sessions/S-2026-03-19-2006-history-sidebar.md` — session doc
+**Files changed**
+- `public/index.html` — all three tasks implemented
+- `docs/project-memory/sessions/S-2026-03-19-2012-markdown-history-fixes.md` — new session doc
 
-**Commands run:**
-- `git fetch origin`
-- `node -e ...` (sanity checks — all 13 passed)
-- `git add ... && git commit`
+**Commands run**
+- `git pull` (no remote branch yet, fetched main)
+- `git add` + `git commit`
 - `git push -u origin HEAD`
 
-**What was implemented:**
-- **B-005 fix:** Added `padding-right: 52px` to `.msg.claude .bubble` so the absolute-positioned copy button no longer overlaps text
-- **F-005 sidebar:** 220px left sidebar with "History" heading and `#history-list`; `#app` changed to flex-row; existing content wrapped in `#chat-area`
-- **localStorage persistence:** Conversations saved as `{ id, title, timestamp }` on first message; max 20 entries, newest first
-- **History rendering:** List rendered on page load and refreshed after New Chat or new conversation starts
-- **Conversation loading:** Clicking a history entry fetches `/api/conversations/:id` and replays messages into the thread DOM
+**What was implemented**
 
-**Notes / follow-on work:**
-- Agent B owns `server.js` — the `/api/conversations/:id` endpoint format should match what Agent B implements (the load handler defensively handles both `{ messages: [...] }` and flat array responses)
+| Task | Change |
+|------|--------|
+| B-006 stale history | `loadConversation` checks `res.status === 404` → removes entry from localStorage, re-renders history list, shows inline error message |
+| F-006 headings | New `processTextLines` replaces `appendInlineSegments` call in `renderTextInto`; lines matching `^(#{1,3}) (.*)` create `h1`/`h2`/`h3` elements with inline formatting |
+| F-007 lists | Contiguous lines starting with `- ` are grouped into a `<ul>` with `<li>` children; a non-list line closes the current list |
+| CSS | Added `.bubble h1/h2/h3` sizing/margin and `.bubble ul/li` indent styles |
+
+**Notes**
+- `appendInlineSegments` is left in place (now dead code) to minimize risk; only its call site in `renderTextInto` changed
+- No test suite exists in this project — manual browser testing is needed to verify rendering
 
