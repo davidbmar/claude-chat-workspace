@@ -204,6 +204,12 @@
       white-space: pre;
     }
     .bubble pre code { background: none; padding: 0; }
+    .bubble h1, .bubble h2, .bubble h3 { margin: 8px 0 4px; font-weight: 600; line-height: 1.3; }
+    .bubble h1 { font-size: 1.4em; }
+    .bubble h2 { font-size: 1.2em; }
+    .bubble h3 { font-size: 1.05em; }
+    .bubble ul { margin: 4px 0 4px 20px; }
+    .bubble li { margin: 2px 0; }
   </style>
 </head>
 <body>
@@ -304,6 +310,16 @@
 
     try {
       var res = await fetch('/api/conversations/' + id);
+      if (res.status === 404) {
+        // Stale history entry — server restarted and lost this conversation
+        var staleHistory = getHistory().filter(function (h) { return h.id !== id; });
+        saveHistory(staleHistory);
+        renderHistoryList();
+        var errBubble = addMsg('claude');
+        errBubble.closest('.msg').classList.add('error');
+        errBubble.textContent = 'This conversation is no longer available (server was restarted).';
+        return;
+      }
       if (!res.ok) throw new Error('Failed to load conversation');
       var data = await res.json();
       var messages = data.messages || data;
@@ -538,8 +554,8 @@
         pre.appendChild(codeEl);
         el.appendChild(pre);
       } else {
-        // Regular text: handle inline code and newlines
-        appendInlineSegments(el, part);
+        // Regular text: handle headings, lists, inline code, and newlines
+        processTextLines(el, part);
       }
     }
   }
@@ -560,6 +576,72 @@
           if (lines[j]) appendFormattedLine(parent, lines[j]);
           if (j < lines.length - 1) parent.appendChild(document.createElement('br'));
         }
+      }
+    }
+  }
+
+  // Processes a text part line-by-line: detects headings (# ## ###) and unordered lists (- item).
+  // Contiguous list lines are grouped into a <ul>; heading lines become h1/h2/h3.
+  // Inline formatting (bold/italic/code) is applied to all content via appendInlineSegmentsSingleLine.
+  function processTextLines(parent, text) {
+    var lines = text.split('\n');
+    var currentList = null;
+    var regularLines = [];
+
+    function flushRegularLines() {
+      for (var k = 0; k < regularLines.length; k++) {
+        if (k > 0) parent.appendChild(document.createElement('br'));
+        if (regularLines[k]) appendInlineSegmentsSingleLine(parent, regularLines[k]);
+      }
+      regularLines = [];
+    }
+
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+
+      // Heading detection: # ## ###
+      var hm = line.match(/^(#{1,3}) (.*)/);
+      if (hm) {
+        flushRegularLines();
+        currentList = null;
+        var hEl = document.createElement('h' + hm[1].length);
+        appendInlineSegmentsSingleLine(hEl, hm[2]);
+        parent.appendChild(hEl);
+        continue;
+      }
+
+      // List item detection: - item
+      if (line.startsWith('- ')) {
+        flushRegularLines();
+        if (!currentList) {
+          currentList = document.createElement('ul');
+          parent.appendChild(currentList);
+        }
+        var li = document.createElement('li');
+        appendInlineSegmentsSingleLine(li, line.slice(2));
+        currentList.appendChild(li);
+        continue;
+      }
+
+      // Regular line — close list context
+      currentList = null;
+      regularLines.push(line);
+    }
+
+    flushRegularLines();
+  }
+
+  // Renders a single line (no newlines) with inline code and bold/italic support.
+  function appendInlineSegmentsSingleLine(parent, text) {
+    var segments = text.split(/(`[^`\n]+`)/g);
+    for (var i = 0; i < segments.length; i++) {
+      var seg = segments[i];
+      if (seg.startsWith('`') && seg.endsWith('`') && seg.length > 2) {
+        var code = document.createElement('code');
+        code.textContent = seg.slice(1, -1);
+        parent.appendChild(code);
+      } else {
+        if (seg) appendFormattedLine(parent, seg);
       }
     }
   }
