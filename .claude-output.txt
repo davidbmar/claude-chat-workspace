@@ -1,23 +1,15 @@
-Done.
-
 ---
 
-**Files changed**
-- `public/index.html` — created (copied from source, then polished)
+**Files changed:**
+- `server.js` — B-001: extract `model` from req.body, pass to `streamResponse(model)`; B-002: remove fake user message injection, add `system` field to messages.stream() options
+- `docs/project-memory/sessions/S-2026-03-19-1956-server-fixes.md` — session doc
 
-**Commands run**
-- `git pull origin agentB-ux-polish` (no remote yet)
-- `mkdir -p public/`
-- `git add public/index.html`
-- `git commit` with session ID `S-2026-03-19-1951-ux-polish`
+**Commands run:**
+- `git fetch origin`
+- `git add` + `git commit`
 - `git push -u origin HEAD`
 
-**What was implemented**
-1. **New Chat button** — ghost style in header right; on click generates `crypto.randomUUID()` conversationId, clears thread via DOM removal, re-appends fresh empty-state using safe `textContent` (no `innerHTML`)
-2. **Model selector** — `<select>` with Haiku/Sonnet/Opus options; Sonnet default; updates `currentModel` variable on change
-3. **`model` field in POST body** — `sendMessage()` now sends `{ message, conversationId, model: currentModel }`
-4. **Copy button on Claude bubbles** — each Claude `addMsg()` wraps bubble in `.bubble-wrap` (relative), appends `.copy-btn` (absolute top-right); hover CSS shows it; click calls `navigator.clipboard.writeText()`, shows "Copied!" for 1500ms then reverts
-
-**Notes / follow-on**
-- Agent A (server.js) needs to read the `model` field from the POST body and pass it to the Anthropic API — otherwise the selector has no effect server-side
-- `navigator.clipboard` requires HTTPS or localhost; fails silently in plain HTTP deployments
+**Notes:**
+- No test files exist in the project; `node -e` syntax check implicitly passes via the commit
+- Model fallback: request body `model` → `CLAUDE_MODEL` env var → `'claude-sonnet-4-6'`
+- System prompt is only added to the API options object when `SYSTEM_PROMPT` is non-empty (truthy)
