@@ -5,6 +5,13 @@ const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
 
 const app = express();
+
+// Request logging middleware
+app.use((req, _res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -54,6 +61,12 @@ app.get('/api/conversations/:id', (req, res) => {
   res.json({ messages: history });
 });
 
+app.delete('/api/conversations', (_req, res) => {
+  const count = conversations.size;
+  conversations.clear();
+  res.json({ ok: true, cleared: count });
+});
+
 app.delete('/api/conversations/:id', (req, res) => {
   if (!conversations.has(req.params.id)) return res.status(404).json({ error: 'not found' });
   conversations.delete(req.params.id);
@@ -94,4 +107,11 @@ app.post('/api/chat', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => console.log(`Claude Chat listening on :${PORT}`));
+const server = app.listen(PORT, () => console.log(`Claude Chat listening on :${PORT}`));
+
+function shutdown() {
+  server.close(() => process.exit(0));
+}
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
