@@ -1,10 +1,10 @@
-# Sprint 2 — Agent Notes
+# Sprint 3 — Agent Notes
 
-*Started: 2026-03-19 19:55 UTC*
+*Started: 2026-03-19 20:00 UTC*
 
 Phase 1 Agents: 2
-- agentA-server-fixes
-- agentB-frontend-polish
+- agentA-frontend-fixes
+- agentB-history-api
 
 Phase 2 Agents: 0
 (none)
@@ -13,45 +13,45 @@ Automated summaries from each agent are appended below as they complete.
 
 ---
 
-## agentA-server-fixes
+## agentB-history-api
 
-*Completed: 2026-03-19 19:56 UTC*
+*Completed: 2026-03-19 20:01 UTC*
 
 **Files changed:**
-- `server.js` — B-001: extract `model` from req.body, pass to `streamResponse(model)`; B-002: remove fake user message injection, add `system` field to messages.stream() options
-- `docs/project-memory/sessions/S-2026-03-19-1956-server-fixes.md` — session doc
+- `server.js` — added 3 new endpoints (GET /api/conversations, GET /api/conversations/:id, DELETE /api/conversations/:id)
+- `docs/project-memory/sessions/S-2026-03-19-2001-history-api.md` — session doc
 
 **Commands run:**
-- `git fetch origin`
+- `git pull origin main`
+- `node --check server.js` (syntax OK)
 - `git add` + `git commit`
 - `git push -u origin HEAD`
 
 **Notes:**
-- No test files exist in the project; `node -e` syntax check implicitly passes via the commit
-- Model fallback: request body `model` → `CLAUDE_MODEL` env var → `'claude-sonnet-4-6'`
-- System prompt is only added to the API options object when `SYSTEM_PROMPT` is non-empty (truthy)
+- No test framework exists in the project; syntax validation passed.
+- All three endpoints operate on the existing in-memory `conversations` Map — no persistence layer added (consistent with existing design).
+- Unknown IDs return `404 { error: 'not found' }` on both GET and DELETE as specified.
 
 
 ---
 
-## agentB-frontend-polish
+## agentA-frontend-fixes
 
-*Completed: 2026-03-19 19:57 UTC*
+*Completed: 2026-03-19 20:01 UTC*
 
 **Files changed:**
-- `public/index.html` — all three fixes
-- `docs/project-memory/sessions/S-2026-03-19-1957-frontend-polish-sprint2.md` — session doc
-
-**Changes in `public/index.html`:**
-- **B-003**: `claude-opus-4-6` → `claude-opus-4-5` in the model selector `<option>`
-- **F-001**: Added `appendFormattedLine()` helper that splits text on `**bold**`/`*italic*` regex and inserts `<strong>`/`<em>` DOM elements; `appendInlineSegments()` now calls it instead of direct `createTextNode`
-- **F-003**: Added `.loading-dots` CSS with staggered `dot-pulse` keyframe animation; `sendMessage()` now injects three `<span>` dots into the Claude bubble before fetch and removes them on the first streaming token
+- `public/index.html` — 1 file, 11 insertions / 7 deletions
 
 **Commands run:**
-- `git pull origin agentB-frontend-polish` (branch didn't exist on remote yet)
-- Node smoke test — 8/8 checks passed
-- `git add` + `git commit`
+- `git pull` (no upstream, skipped)
+- `git add public/index.html && git commit`
 - `git push -u origin HEAD`
 
-**Notes:** No test suite exists in this project (package.json has no scripts). The smoke test verified all three changes are present in the file.
+**Changes made:**
+
+1. **B-004 (triple-asterisk markdown):** Updated `appendFormattedLine()` regex from `(\*\*[^*]+\*\*|\*[^*\n]+\*)` to `(\*{3}[^*]+\*{3}|\*\*[^*]+\*\*|\*[^*\n]+\*)`. Added a new branch at the top of the if/else chain that creates `<strong><em>innerText</em></strong>` when a token starts and ends with `***` and length > 6.
+
+2. **F-004 (always-visible copy button):** Removed `opacity: 0` from `.copy-btn` CSS rule and removed the `.bubble-wrap:hover .copy-btn { opacity: 1; }` rule entirely. Copy button is now always visible; hover still changes color/border.
+
+**Notes:** No test command is defined in `package.json`. The project has no automated test suite — changes were verified by code inspection against the acceptance criteria.
 
