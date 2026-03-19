@@ -1,104 +1,81 @@
 # Plan: Claude Chat Workspace
 
+## What Is Built (v1 — Sprint 1–8 Complete)
+
+All core functionality is implemented and Playwright-verified. The app runs locally via Docker Compose.
+
+### Server (server.js)
+- Express on port 8080, node:20-alpine (~100MB image)
+- `POST /api/chat` — SSE streaming; per-request model selection; system prompt via Anthropic `system` parameter
+- `GET/DELETE /api/conversations/:id` — conversation history management
+- `DELETE /api/conversations` — bulk clear
+- `GET /api/stats` — uptime, conversation count, request count
+- `GET /api/health` — k8s readiness probe
+- Request logging, graceful SIGTERM/SIGINT shutdown
+- Reads `CLAUDE_MODEL` and `SYSTEM_PROMPT` from env vars
+
+### Frontend (public/index.html)
+- Single-file SPA — HTML + inline CSS + vanilla JS, no build step
+- Dark theme, SSE token streaming with animated loading dots
+- Model selector (Haiku / Sonnet / Opus) — persisted in localStorage
+- Chat history sidebar with localStorage persistence, click-to-reload, × delete, mobile hamburger toggle
+- Copy button below each Claude bubble (never overlaps text — flexbox column layout)
+- Character count label after each response
+- New Chat button — generates new UUID, clears thread
+- DOM-based markdown renderer (no innerHTML/XSS): fenced code blocks, inline code, headings, bold, italic, unordered/ordered lists, horizontal rules, GFM pipe tables
+
+### Infrastructure
+- `Dockerfile`, `docker-compose.yml`, `.env.example`, `build-and-push.sh`
+- ECR repo: `294499146847.dkr.ecr.us-east-1.amazonaws.com/automation-ai/claude-chat-workspace:latest`
+
 ## Appetite
 
-**Sprint-sized work.** The v1 implementation is already complete — server, UI, portal integration, Docker image, build script. The immediate work is production deployment (~1 sprint). Subsequent features are each 1-sprint sized.
-
-## What's Already Built (v1)
-
-All code lives in `~/src/everyone-ai/docker/claude-chat-workspace/` and the portal source files.
-
-**New files:**
-- `docker/claude-chat-workspace/Dockerfile` — node:20-alpine, port 8080
-- `docker/claude-chat-workspace/server.js` — Express + Anthropic SDK + SSE streaming + conversation history Map
-- `docker/claude-chat-workspace/public/index.html` — single-file chat SPA (dark theme, DOM-safe markdown renderer)
-- `docker/claude-chat-workspace/package.json` — express ^4.18, @anthropic-ai/sdk ^0.36
-- `docker/claude-chat-workspace/build-and-push.sh` — SSH to automation EC2, tar context, docker build + ECR push
-
-**Modified files:**
-- `portal/src/k8s.js` — `createWorkspacePod()` gains `appId` param; branches to lightweight spec for `claude-chat`
-- `portal/src/routes/workspaces.js` — extracts `appId` from POST body, passes to k8s
-- `portal/public/js/catalog.js` — adds `claude-chat` to APPS array; hides template selector + auto-start for chat
-
-## Solution Sketch
-
-### The appId branch pattern
-```
-POST /api/workspaces { appId: 'claude-chat', username, teamSlug }
-  → k8s.createWorkspacePod(..., appId)
-    → if appId === 'claude-chat': lightweight pod spec (chat image, no postStart, 100m/128Mi)
-    → else: existing code-server spec (2GB image, postStart hook, 250m/512Mi)
-```
-
-### The LLM adapter (swappable backend)
-```js
-async function* streamResponse(messages) {
-  // Only this function changes when switching providers
-  // Currently: Anthropic SDK
-  // Future: Ollama, Bedrock, OpenAI-compatible
-}
-```
-
-### Conversation history
-```js
-const conversations = new Map();
-// Key: crypto.randomUUID() — generated client-side once per page load
-// Value: [{role, content}, ...] — full history, passed to API on every turn
-```
-
-## Sprint Candidates
-
-### Sprint 1 — Production Deploy (immediate)
-Complete the deployment path so the feature is live:
-- Build and push `claude-chat-workspace:latest` to ECR via `build-and-push.sh`
-- Set `CLAUDE_CHAT_IMAGE` env var on all portal EC2s
-- Redeploy portal via `deploy-all-portals.sh`
-- Smoke test end-to-end: catalog → launch → chat → streaming response
-
-### Sprint 2 — Conversation UX Polish
-Small improvements with high impact:
-- "New Chat" button in header (new UUID, clear thread — no page refresh needed)
-- Copy conversation to clipboard (full thread as markdown)
-- Download conversation as `.md` file
-- Show token count / estimated cost per session (optional)
-
-### Sprint 3 — System Prompt & Model Selection
-Make the chat configurable without code changes:
-- Read `SYSTEM_PROMPT` from env var → inject as system message on every conversation
-- Model selector in UI header: Haiku / Sonnet / Opus
-- Per-team personas: finance team gets compliance-focused system prompt via portal config
-
-### Sprint 4 — Conversation Persistence
-Survive pod restarts:
-- Option A: write conversation JSON to a k8s PersistentVolumeClaim (simplest, one-pod)
-- Option B: write to S3 keyed by `conversationId` (portable, survives pod deletion)
-- "Resume last conversation" button on page load
-- Conversation list in sidebar (title = first user message, truncated to 50 chars)
-
-### Sprint 5 — LLM Backend Swap
-Demonstrate the adapter pattern in action:
-- Add `CLAUDE_CHAT_BACKEND=anthropic|ollama|bedrock` env var
-- Implement Ollama adapter for on-prem / no-API-key deployment
-- Implement Bedrock adapter using IAM instance role (no API key needed on AWS)
-- Test: same UI, same conversation UX, different backend
+**Remaining work is sprint-sized.** The dev implementation is feature-complete. The next action is production deployment (1 sprint). Everything after that is additive.
 
 ## Rabbit Holes
 
-- **Rich markdown rendering** — adding a full markdown library (marked.js, etc.) brings XSS risk. The current DOM-based renderer handles 95% of cases safely. Don't over-engineer this.
-- **WebSockets** — SSE handles server-to-client streaming cleanly. WebSockets add complexity and aren't needed until multi-user/real-time collaboration is required.
-- **Auth layer in the chat server** — network-level access control (Traefik/ALB) is sufficient for the current deployment model. Don't build auth into the app server until there's a clear requirement.
-- **Kubernetes operators / CRDs** — the current pod-based model is simple and matches the existing workspace pattern. Don't introduce new k8s abstractions.
+- **Full markdown library (marked.js, etc.)** — the DOM-based renderer covers all practical cases safely. Adding a library introduces XSS surface and a dependency for marginal gain.
+- **WebSockets** — SSE is correct for unidirectional streaming. WebSockets only become relevant for multi-user shared rooms.
+- **App-level auth** — Traefik/ALB handles access control. Don't build auth into the chat server until there's a compliance requirement.
+- **Build pipeline / bundler** — the single HTML file is the right tradeoff at this scale.
 
-## No-Gos
+## No-Gos (v1)
 
-- No multi-user shared chat rooms (v1 is one pod = one user)
-- No file upload / vision in v1 (adds Anthropic Files API complexity)
-- No separate database service (keep it stateless for v1; persistence via volume or S3 only)
-- No build pipeline / bundler for the frontend (single HTML file is the right tradeoff at this size)
-- No cramming chat UI into code-server (separate image is the right call — keeps both images clean)
+- No multi-user shared chat rooms
+- No file/image upload
+- No separate database service
+- No conversation persistence (resets on pod restart — planned for v2)
 
-## Market / Prior Art
+## Sprint Candidates (Next)
 
-- **ChatGPT, Claude.ai** — the canonical chat interfaces. We're not competing; we're embedding similar UX inside an org's own k8s infrastructure with their own API key and security controls.
-- **Open WebUI** — a self-hosted chat UI for Ollama. More feature-rich but heavier. Claude Chat Workspace is intentionally lighter and portal-native.
-- **LibreChat** — open-source multi-LLM chat. Full-featured but complex to deploy. Our value is zero-ops deployment inside existing portal infrastructure.
+### Sprint 9 — Production Deploy
+Ship v1 to production:
+- Run `build-and-push.sh` to build and push `claude-chat-workspace:latest` to ECR
+- Set `CLAUDE_CHAT_IMAGE` env var on all portal EC2s
+- Redeploy portal via `deploy-all-portals.sh`
+- Smoke test end-to-end: portal catalog → launch → chat → streaming response
+
+### Sprint 10 — Conversation Persistence
+Survive pod restarts:
+- Option A: write conversation JSON to a k8s PersistentVolumeClaim (one-pod, simplest)
+- Option B: write to S3 keyed by `conversationId` (portable, survives pod deletion)
+- "Resume last conversation" on page load
+- Conversation list sidebar already exists — just needs server-side backing
+
+### Sprint 11 — LLM Backend Swap
+Demonstrate the adapter pattern:
+- Add `CLAUDE_CHAT_BACKEND=anthropic|ollama|bedrock` env var
+- Implement Ollama adapter for on-prem / no-API-key deployment
+- Implement Bedrock adapter using IAM instance role
+
+### Sprint 12 — Export + Sharing
+Useful for knowledge workers:
+- Download conversation as `.md` or `.txt`
+- Copy full thread to clipboard as formatted markdown
+- Optional: shareable read-only URL (requires persistence first)
+
+### Sprint 13 — System Prompt UI
+Make personas configurable without code changes:
+- Toggle in header to show/hide active system prompt
+- Per-team persona set via `SYSTEM_PROMPT` env var (already supported in server)
+- UI indicator when a custom system prompt is active
