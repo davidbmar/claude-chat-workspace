@@ -49,6 +49,8 @@ What should happen?
 | F-005 | Chat history sidebar — localStorage-based session list | Implemented in Sprint 4. | medium | Done (Sprint 4) |
 | F-006 | Markdown heading rendering (# ## ###) | Implemented in Sprint 5: lines starting with #/##/### render as h1/h2/h3 elements. | low | Done (Sprint 5) |
 | F-007 | Markdown unordered list rendering (- item) | Implemented in Sprint 5: lines starting with `- ` render as `<ul><li>` elements. | low | Done (Sprint 5) |
-| F-008 | Markdown ordered list rendering (1. item) | Claude sometimes uses numbered lists like `1. First` `2. Second`. These render as raw text. Add ordered list `<ol><li>` support. | low | Open |
-| F-009 | Markdown horizontal rule (---) | Lines that are just `---` or `***` should render as `<hr>` separators. | low | Open |
-| F-010 | Mobile responsive layout | The sidebar at 220px takes too much space on small screens. Add a responsive layout: hide sidebar on mobile, add a hamburger button to toggle it. | medium | Open |
+| F-008 | Markdown ordered list rendering (1. item) | Implemented in Sprint 6: numbered lists render as `<ol><li>` elements. | low | Done (Sprint 6) |
+| F-009 | Markdown horizontal rule (---) | Implemented in Sprint 6: `---` lines render as `<hr>` elements. | low | Done (Sprint 6) |
+| F-010 | Mobile responsive layout | Implemented in Sprint 6: sidebar hides on screens <= 600px, hamburger button toggles it. | medium | Done (Sprint 6) |
+| F-011 | Delete conversation from history sidebar | Users cannot remove individual conversations from the history sidebar. Add a small delete button (x) on each history entry that removes it from localStorage and optionally calls DELETE /api/conversations/:id. | low | Open |
+| F-012 | Character/token usage display | Show approximate token count or character count for each Claude response. This helps users understand model usage. Can be shown as a small muted label below the bubble. | low | Open |
