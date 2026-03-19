@@ -1,16 +1,17 @@
 Done.
 
+---
+
 **Files changed:**
-- `server.js` — added 3 new endpoints (GET /api/conversations, GET /api/conversations/:id, DELETE /api/conversations/:id)
-- `docs/project-memory/sessions/S-2026-03-19-2001-history-api.md` — session doc
+- `server.js` — updated `GET /api/conversations` handler to return `{ conversations: [{ id, messageCount, preview }] }` instead of `{ ids: [...] }`
+- `docs/project-memory/sessions/S-2026-03-19-2005-conversations-api-preview.md` — new session doc
 
 **Commands run:**
-- `git pull origin main`
-- `node --check server.js` (syntax OK)
+- `git pull` (no upstream, skipped)
 - `git add` + `git commit`
 - `git push -u origin HEAD`
 
 **Notes:**
-- No test framework exists in the project; syntax validation passed.
-- All three endpoints operate on the existing in-memory `conversations` Map — no persistence layer added (consistent with existing design).
-- Unknown IDs return `404 { error: 'not found' }` on both GET and DELETE as specified.
+- No test suite exists in this repo; the change is straightforward and covered by the acceptance criteria in the brief.
+- `GET /api/conversations/:id` and `DELETE /api/conversations/:id` are unchanged.
+- Preview truncation uses `slice(0, 60)` with no ellipsis, matching the spec exactly.

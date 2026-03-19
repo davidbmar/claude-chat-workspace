@@ -1,4 +1,4 @@
-agentB-history-api — Sprint 3
+agentB-conversations-api — Sprint 4
 
 Previous Sprint Summary
 ─────────────────────────────────────────
@@ -64,9 +64,9 @@ Previous Sprint Summary
 Sprint-Level Context
 
 Goal
-- Fix the bold+italic combined markdown rendering bug (B-004) so ***text*** renders as bold+italic
-- Make the copy button always visible instead of hover-only (F-004)
-- Add a server-side endpoint to retrieve conversation history (needed for future history sidebar)
+- Add a localStorage-based chat history sidebar so users can return to previous conversations (F-005)
+- Fix the copy button overlap on narrow Claude bubbles (B-005)
+- Enhance the server conversations list endpoint to include a preview of the first message
 
 Constraints
 - No two agents may modify the same files
@@ -75,18 +75,17 @@ Constraints
 
 
 Objective
-- Add a server-side API endpoint to retrieve stored conversation history by ID
+- Enhance the server-side conversations API to include message previews in the list
 
 Tasks
 - Open server.js and read it fully before making changes
-- Add GET /api/conversations/:id endpoint: if the conversationId exists in the conversations Map, return { messages: history } as JSON where history is the array of {role, content} objects. If not found, return 404 { error: 'not found' }.
-- Add GET /api/conversations endpoint: return a list of all active conversation IDs as { ids: [...] } — useful for the frontend to enumerate sessions.
-- Add DELETE /api/conversations/:id endpoint: removes the conversation from the Map and returns { ok: true }. If not found, returns 404.
-- Commit with: feat: add conversation history API endpoints (GET/DELETE /api/conversations)
+- Update GET /api/conversations: instead of returning `{ ids: [...] }`, return `{ conversations: [ { id, messageCount, preview } ] }` where `preview` is the first user message content truncated to 60 characters, and `messageCount` is the total number of messages in history. If the conversation has no messages, set preview to "".
+- Keep GET /api/conversations/:id unchanged (still returns full history).
+- Keep DELETE /api/conversations/:id unchanged.
+- Commit with: feat: enhance conversations list API with preview and message count
 
 Acceptance Criteria
-- GET /api/conversations/:id returns the full message history for a known conversationId
-- GET /api/conversations returns all active conversation IDs
-- DELETE /api/conversations/:id removes the conversation
-- Unknown IDs return 404
-- All changes committed to server.js only
+- GET /api/conversations returns `{ conversations: [{ id, messageCount, preview }] }` array
+- Preview is the first user message truncated to 60 chars
+- Empty conversations return preview: ""
+- Individual GET /api/conversations/:id still works as before
