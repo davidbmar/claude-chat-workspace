@@ -1,4 +1,4 @@
-agentB-frontend-polish — Sprint 2
+agentA-frontend-fixes — Sprint 3
 
 Previous Sprint Summary
 ─────────────────────────────────────────
@@ -64,30 +64,28 @@ Previous Sprint Summary
 Sprint-Level Context
 
 Goal
-- Fix two high-priority server-side bugs: model selector is ignored by server (B-001) and system prompt uses wrong API pattern (B-002)
-- Fix invalid Opus model ID in the frontend (B-003)
-- Add markdown bold/italic rendering in Claude bubbles (F-001)
-- Add a loading indicator before the first streaming token (F-003)
+- Fix the bold+italic combined markdown rendering bug (B-004) so ***text*** renders as bold+italic
+- Make the copy button always visible instead of hover-only (F-004)
+- Add a server-side endpoint to retrieve conversation history (needed for future history sidebar)
 
 Constraints
 - No two agents may modify the same files
-- Agent A owns: server.js
-- Agent B owns: public/index.html
+- Agent A owns: public/index.html
+- Agent B owns: server.js
 
 
 Objective
-- Fix the invalid Opus model ID, add markdown bold/italic rendering, and add a loading indicator
+- Fix the triple-asterisk markdown rendering bug and make the copy button always visible
 
 Tasks
 - Open public/index.html and read it fully before making changes
-- Fix B-003: In the model selector <select>, change the Opus option value from 'claude-opus-4-6' to 'claude-opus-4-5'. Keep the display text "Opus — powerful".
-- Fix F-001: In the renderTextInto() JavaScript function, after handling fenced code blocks and inline code, add support for **bold** (wrap in <strong>) and *italic* (wrap in <em>) text. Implement this in the appendInlineSegments() function: after splitting on inline code backticks, further split text segments on bold/italic markers using regex and insert the appropriate DOM elements. Be careful to handle the case where * or ** appear in code spans (they should not be processed inside code elements).
-- Fix F-003: Add a loading indicator. After the user sends a message and before the first streaming token arrives, show a pulsing "..." animation inside the Claude bubble. Implement this by: (1) adding a CSS class `.loading-dots` with an animated content or child spans, and (2) in sendMessage(), adding the loading indicator to the claudeBubble immediately after creating it, then removing it as soon as the first token is received (before calling renderTextInto for the first time).
-- Commit with: fix: correct Opus model ID, add bold/italic rendering, add loading indicator (B-003, F-001, F-003)
+- Fix B-004: In the appendFormattedLine() function, update the regex split pattern to also handle ***text*** (bold+italic combined). The current pattern is `(\*\*[^*]+\*\*|\*[^*\n]+\*)`. Change it to handle three cases in order: (1) `***text***` → wrap in both <strong> and <em>, (2) `**text**` → wrap in <strong>, (3) `*text*` → wrap in <em>. The new regex should be `(\*{3}[^*]+\*{3}|\*\*[^*]+\*\*|\*[^*\n]+\*)`. Add a new branch at the top of the if/else chain: if p starts with *** and ends with *** and length > 6, create a <strong> containing an <em> with the inner text (strip 3 chars from each end).
+- Fix F-004: Make the copy button always visible by removing `opacity: 0` from the `.copy-btn` CSS rule and removing `.bubble-wrap:hover .copy-btn { opacity: 1; }`. Instead, always show the copy button. Keep the hover styles for color change but remove the opacity hide/show.
+- Commit with: fix: triple-asterisk markdown rendering and always-visible copy button (B-004, F-004)
 
 Acceptance Criteria
-- Opus option value is 'claude-opus-4-5' (not 'claude-opus-4-6')
-- Claude responses with **bold** and *italic* text render correctly as <strong> and <em> elements
-- A loading animation appears in the Claude bubble between send and first token
-- Loading animation disappears when the first token arrives
+- ***bold italic*** text renders as bold+italic (strong>em) not raw asterisks
+- **bold** text still renders correctly as <strong>
+- *italic* text still renders correctly as <em>
+- Copy button is visible on all Claude bubbles without needing to hover
 - All changes committed to public/index.html only
