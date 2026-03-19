@@ -1,4 +1,4 @@
-agentB-conversations-api — Sprint 4
+agentA-markdown-and-history-fixes — Sprint 5
 
 Previous Sprint Summary
 ─────────────────────────────────────────
@@ -64,9 +64,10 @@ Previous Sprint Summary
 Sprint-Level Context
 
 Goal
-- Add a localStorage-based chat history sidebar so users can return to previous conversations (F-005)
-- Fix the copy button overlap on narrow Claude bubbles (B-005)
-- Enhance the server conversations list endpoint to include a preview of the first message
+- Fix graceful handling of stale history entries when the server restarts and conversations are lost (B-006)
+- Add markdown heading rendering for # ## ### syntax (F-006)
+- Add markdown unordered list rendering for - item syntax (F-007)
+- Add server-side request logging and graceful shutdown (server robustness)
 
 Constraints
 - No two agents may modify the same files
@@ -75,17 +76,18 @@ Constraints
 
 
 Objective
-- Enhance the server-side conversations API to include message previews in the list
+- Improve the markdown renderer with heading and list support, and handle stale history entries gracefully
 
 Tasks
-- Open server.js and read it fully before making changes
-- Update GET /api/conversations: instead of returning `{ ids: [...] }`, return `{ conversations: [ { id, messageCount, preview } ] }` where `preview` is the first user message content truncated to 60 characters, and `messageCount` is the total number of messages in history. If the conversation has no messages, set preview to "".
-- Keep GET /api/conversations/:id unchanged (still returns full history).
-- Keep DELETE /api/conversations/:id unchanged.
-- Commit with: feat: enhance conversations list API with preview and message count
+- Open public/index.html and read it fully before making changes
+- Fix B-006: In the history item click handler, when fetching GET /api/conversations/:id, handle the case where the server returns a 404 (conversation not found after server restart). If a 404 is returned: show a small inline error message in the thread like "This conversation is no longer available (server was restarted)." Remove the stale entry from localStorage and re-render the history list.
+- Add F-006: In renderTextInto(), after splitting on fenced code blocks, detect lines starting with # markdown headings BEFORE calling appendInlineSegments. In the text-part processing, split on newlines first, then check if each line starts with `# `, `## `, or `### ` and create the appropriate heading element (h1, h2, h3) with the heading text content. Apply inline formatting (bold/italic/code) to heading content too.
+- Add F-007: In renderTextInto() (or appendInlineSegments), detect contiguous lines starting with `- ` and group them into a `<ul>` element with `<li>` children. Each list item text should have inline formatting (bold/italic/code) applied via appendFormattedLine(). A blank line or a non-list line ends the current list.
+- Commit with: feat: markdown headings and lists, graceful stale history handling (B-006, F-006, F-007)
 
 Acceptance Criteria
-- GET /api/conversations returns `{ conversations: [{ id, messageCount, preview }] }` array
-- Preview is the first user message truncated to 60 chars
-- Empty conversations return preview: ""
-- Individual GET /api/conversations/:id still works as before
+- Clicking a stale history entry shows an inline error and removes the entry from localStorage
+- Claude responses with # Heading render as h1/h2/h3 elements (not raw # text)
+- Claude responses with - list item render as <ul><li> elements
+- Bold, italic, and inline code still work inside headings and list items
+- No regressions in existing code block or bold/italic rendering
