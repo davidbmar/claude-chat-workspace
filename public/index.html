@@ -88,7 +88,7 @@
     .msg.claude { align-self: flex-start; align-items: flex-start; }
 
     /* Wrapper for claude bubble + copy button */
-    .bubble-wrap { position: relative; }
+    .bubble-wrap { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 
     .bubble {
       padding: 10px 14px;
@@ -97,7 +97,7 @@
       word-break: break-word;
     }
     .msg.user .bubble { background: var(--user-bubble); color: #fff; border-bottom-right-radius: 3px; white-space: pre-wrap; }
-    .msg.claude .bubble { background: var(--claude-bubble); color: var(--text); border: 1px solid var(--border); border-bottom-left-radius: 3px; padding-right: 56px; }
+    .msg.claude .bubble { background: var(--claude-bubble); color: var(--text); border: 1px solid var(--border); border-bottom-left-radius: 3px; }
 
     .msg-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
 
@@ -110,11 +110,8 @@
     .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
     @keyframes dot-pulse { 0%, 60%, 100% { opacity: 0.2; transform: scale(0.8); } 30% { opacity: 1; transform: scale(1); } }
 
-    /* Copy button — always visible */
+    /* Copy button — sits below the bubble, never overlaps text */
     .copy-btn {
-      position: absolute;
-      top: 6px;
-      right: 6px;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 6px;
