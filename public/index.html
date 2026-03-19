@@ -670,7 +670,14 @@
     }
   }
 
-  // Processes a text part line-by-line: detects headings (# ## ###) and unordered lists (- item).
+  // Parses a GFM table row into trimmed cell strings.
+  // Strips leading/trailing pipes, splits on '|', trims each cell.
+  function parseTableCells(row) {
+    return row.replace(/^\||\|$/g, '').split('|').map(function(c) { return c.trim(); });
+  }
+
+  // Processes a text part line-by-line: detects headings (# ## ###), unordered lists (- item),
+  // GFM pipe tables, and regular text.
   // Contiguous list lines are grouped into a <ul>; heading lines become h1/h2/h3.
   // Inline formatting (bold/italic/code) is applied to all content via appendInlineSegmentsSingleLine.
   function processTextLines(parent, text) {
@@ -688,6 +695,50 @@
 
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i];
+
+      // GFM table detection: line 0 is a pipe row, line 1 is a separator row
+      if (/^\|.+\|$/.test(line) && i + 1 < lines.length && /^\|[-| :]+\|$/.test(lines[i + 1])) {
+        flushRegularLines();
+        currentList = null;
+
+        // Collect all contiguous pipe-delimited lines as the table block
+        var tableLines = [];
+        while (i < lines.length && /^\|.+\|/.test(lines[i])) {
+          tableLines.push(lines[i]);
+          i++;
+        }
+        i--; // Counteract the outer for-loop's i++
+
+        var table = document.createElement('table');
+        var thead = document.createElement('thead');
+        var tbody = document.createElement('tbody');
+
+        // Header row (tableLines[0]); separator row (tableLines[1]) is skipped
+        var headerCells = parseTableCells(tableLines[0]);
+        var headerRow = document.createElement('tr');
+        for (var h = 0; h < headerCells.length; h++) {
+          var th = document.createElement('th');
+          th.textContent = headerCells[h];
+          headerRow.appendChild(th);
+        }
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        // Data rows start at index 2
+        for (var r = 2; r < tableLines.length; r++) {
+          var cells = parseTableCells(tableLines[r]);
+          var tr = document.createElement('tr');
+          for (var c = 0; c < cells.length; c++) {
+            var td = document.createElement('td');
+            td.textContent = cells[c];
+            tr.appendChild(td);
+          }
+          tbody.appendChild(tr);
+        }
+        table.appendChild(tbody);
+        parent.appendChild(table);
+        continue;
+      }
 
       // Heading detection: # ## ###
       var hm = line.match(/^(#{1,3}) (.*)/);
