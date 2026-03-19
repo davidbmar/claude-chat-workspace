@@ -97,7 +97,7 @@
       word-break: break-word;
     }
     .msg.user .bubble { background: var(--user-bubble); color: #fff; border-bottom-right-radius: 3px; white-space: pre-wrap; }
-    .msg.claude .bubble { background: var(--claude-bubble); color: var(--text); border: 1px solid var(--border); border-bottom-left-radius: 3px; padding-right: 52px; }
+    .msg.claude .bubble { background: var(--claude-bubble); color: var(--text); border: 1px solid var(--border); border-bottom-left-radius: 3px; padding-right: 56px; }
 
     .msg-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
 
@@ -208,8 +208,39 @@
     .bubble h1 { font-size: 1.4em; }
     .bubble h2 { font-size: 1.2em; }
     .bubble h3 { font-size: 1.05em; }
-    .bubble ul { margin: 4px 0 4px 20px; }
+    .bubble ul, .bubble ol { margin: 4px 0 4px 20px; }
     .bubble li { margin: 2px 0; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
+
+    /* Hamburger — hidden on desktop, shown on mobile */
+    #hamburger-btn {
+      display: none;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      line-height: 1;
+      padding: 4px 8px;
+      cursor: pointer;
+    }
+    #hamburger-btn:hover { color: var(--text); }
+
+    @media (max-width: 600px) {
+      #hamburger-btn { display: block; }
+      #sidebar {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        z-index: 100;
+        background: var(--bg);
+        width: 220px;
+        border-right: 1px solid var(--border);
+      }
+      #sidebar.sidebar-open { display: flex; }
+      header { flex-wrap: wrap; }
+    }
   </style>
 </head>
 <body>
@@ -220,6 +251,7 @@
   </div>
   <div id="chat-area">
     <header>
+      <button id="hamburger-btn" title="Toggle sidebar">&#9776;</button>
       <span class="logo">&#x1F4AC;</span>
       <h1>Claude Chat</h1>
       <span class="team-name" id="team-name"></span>
@@ -267,6 +299,8 @@
   var modelSelector = document.getElementById('model-selector');
   var newChatBtn = document.getElementById('new-chat-btn');
   var historyList = document.getElementById('history-list');
+  var hamburgerBtn = document.getElementById('hamburger-btn');
+  var sidebar = document.getElementById('sidebar');
 
   // --- localStorage history helpers ---
   var HISTORY_KEY = 'chat-history';
@@ -376,6 +410,11 @@
     emptyState = es;
     renderHistoryList();
     input.focus();
+  });
+
+  // Hamburger: toggle sidebar visibility on mobile
+  hamburgerBtn.addEventListener('click', function () {
+    sidebar.classList.toggle('sidebar-open');
   });
 
   // Auto-resize textarea up to max-height
@@ -610,15 +649,38 @@
         continue;
       }
 
-      // List item detection: - item
+      // Horizontal rule: --- or *** on their own line
+      var trimmed = line.trim();
+      if (trimmed === '---' || trimmed === '***') {
+        flushRegularLines();
+        currentList = null;
+        parent.appendChild(document.createElement('hr'));
+        continue;
+      }
+
+      // Unordered list item: - item
       if (line.startsWith('- ')) {
         flushRegularLines();
-        if (!currentList) {
+        if (!currentList || currentList.tagName !== 'UL') {
           currentList = document.createElement('ul');
           parent.appendChild(currentList);
         }
         var li = document.createElement('li');
         appendInlineSegmentsSingleLine(li, line.slice(2));
+        currentList.appendChild(li);
+        continue;
+      }
+
+      // Ordered list item: 1. item  2. item  etc.
+      var olm = line.match(/^\d+\. (.*)/);
+      if (olm) {
+        flushRegularLines();
+        if (!currentList || currentList.tagName !== 'OL') {
+          currentList = document.createElement('ol');
+          parent.appendChild(currentList);
+        }
+        var li = document.createElement('li');
+        appendInlineSegmentsSingleLine(li, olm[1]);
         currentList.appendChild(li);
         continue;
       }
