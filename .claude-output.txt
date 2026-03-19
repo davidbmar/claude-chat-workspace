@@ -1,16 +1,23 @@
 Done.
 
+---
+
 **Files changed:**
-- `server.js` — added 3 new endpoints (GET /api/conversations, GET /api/conversations/:id, DELETE /api/conversations/:id)
-- `docs/project-memory/sessions/S-2026-03-19-2001-history-api.md` — session doc
+- `public/index.html` — all UI changes (sidebar, layout, JS history logic, B-005 fix)
+- `docs/project-memory/sessions/S-2026-03-19-2006-history-sidebar.md` — session doc
 
 **Commands run:**
-- `git pull origin main`
-- `node --check server.js` (syntax OK)
-- `git add` + `git commit`
+- `git fetch origin`
+- `node -e ...` (sanity checks — all 13 passed)
+- `git add ... && git commit`
 - `git push -u origin HEAD`
 
-**Notes:**
-- No test framework exists in the project; syntax validation passed.
-- All three endpoints operate on the existing in-memory `conversations` Map — no persistence layer added (consistent with existing design).
-- Unknown IDs return `404 { error: 'not found' }` on both GET and DELETE as specified.
+**What was implemented:**
+- **B-005 fix:** Added `padding-right: 52px` to `.msg.claude .bubble` so the absolute-positioned copy button no longer overlaps text
+- **F-005 sidebar:** 220px left sidebar with "History" heading and `#history-list`; `#app` changed to flex-row; existing content wrapped in `#chat-area`
+- **localStorage persistence:** Conversations saved as `{ id, title, timestamp }` on first message; max 20 entries, newest first
+- **History rendering:** List rendered on page load and refreshed after New Chat or new conversation starts
+- **Conversation loading:** Clicking a history entry fetches `/api/conversations/:id` and replays messages into the thread DOM
+
+**Notes / follow-on work:**
+- Agent B owns `server.js` — the `/api/conversations/:id` endpoint format should match what Agent B implements (the load handler defensively handles both `{ messages: [...] }` and flat array responses)
