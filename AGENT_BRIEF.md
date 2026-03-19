@@ -1,4 +1,4 @@
-agentB-server-stats — Sprint 6
+agentB-char-count — Sprint 7
 
 Previous Sprint Summary
 ─────────────────────────────────────────
@@ -64,10 +64,9 @@ Previous Sprint Summary
 Sprint-Level Context
 
 Goal
-- Complete markdown rendering: ordered lists (F-008) and horizontal rules (F-009)
-- Fix copy button overlap on narrow bubbles (B-005)
-- Make layout responsive for mobile screens (F-010)
-- Add server stats endpoint and conversation count endpoint
+- Add delete button to history sidebar entries (F-011)
+- Add character count display below Claude responses (F-012 frontend)
+- Add character count to the SSE stream done event (F-012 backend)
 
 Constraints
 - No two agents may modify the same files
@@ -76,16 +75,15 @@ Constraints
 
 
 Objective
-- Add a stats endpoint to the server
+- Include character count in the SSE done event and expose response stats
 
 Tasks
 - Open server.js and read it fully before making changes
-- Track server start time: add `const startTime = new Date();` near the top of the file (after client initialization).
-- Add GET /api/stats endpoint: returns a JSON object with: `{ uptime: Math.floor((Date.now() - startTime) / 1000), conversationCount: conversations.size, messageCount: totalMessages, version: "1.0.0" }` where `totalMessages` is computed by summing the length of all history arrays in the conversations Map.
-- Add a request counter: increment a counter on every request (in the logging middleware if it exists, or add one). Include `requestCount` in the stats endpoint response.
-- Commit with: feat: add /api/stats endpoint with uptime, conversation count, and request count
+- In the /api/chat route handler, after the streaming loop completes and `assistantText` is populated, modify the done event to include the character count: instead of `res.write(\`data: ${JSON.stringify({ done: true })}\n\n\`)`, send `res.write(\`data: ${JSON.stringify({ done: true, chars: assistantText.length })}\n\n\`)`.
+- Also add the word count: `words: assistantText.split(/\s+/).filter(Boolean).length` to the done event payload.
+- Commit with: feat: include char and word count in SSE done event (F-012 backend)
 
 Acceptance Criteria
-- GET /api/stats returns uptime in seconds, conversationCount, messageCount, requestCount, version
-- uptime increases over time
-- conversationCount reflects active conversations in the Map
+- The SSE done event includes `chars: N` where N is the length of the assistant response text
+- The SSE done event includes `words: N` where N is the approximate word count
+- All existing functionality (streaming tokens, error handling) unchanged
