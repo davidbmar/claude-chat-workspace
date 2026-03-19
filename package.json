@@ -1,0 +1,10 @@
+{
+  "name": "claude-chat-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "main": "server.js",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.36.0",
+    "express": "^4.18.0"
+  }
+}

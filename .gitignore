@@ -11,3 +11,6 @@ terraform/.terraform.lock.hcl
 
 # Node
 node_modules/
+
+# Local environment — never commit secrets
+.env
