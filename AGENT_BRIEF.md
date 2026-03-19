@@ -1,4 +1,4 @@
-agentB-server-robustness — Sprint 5
+agentB-server-stats — Sprint 6
 
 Previous Sprint Summary
 ─────────────────────────────────────────
@@ -64,10 +64,10 @@ Previous Sprint Summary
 Sprint-Level Context
 
 Goal
-- Fix graceful handling of stale history entries when the server restarts and conversations are lost (B-006)
-- Add markdown heading rendering for # ## ### syntax (F-006)
-- Add markdown unordered list rendering for - item syntax (F-007)
-- Add server-side request logging and graceful shutdown (server robustness)
+- Complete markdown rendering: ordered lists (F-008) and horizontal rules (F-009)
+- Fix copy button overlap on narrow bubbles (B-005)
+- Make layout responsive for mobile screens (F-010)
+- Add server stats endpoint and conversation count endpoint
 
 Constraints
 - No two agents may modify the same files
@@ -76,17 +76,16 @@ Constraints
 
 
 Objective
-- Add request logging and graceful shutdown to the server
+- Add a stats endpoint to the server
 
 Tasks
 - Open server.js and read it fully before making changes
-- Add request logging middleware: before app.use(express.json()), add a simple middleware that logs `[${new Date().toISOString()}] ${req.method} ${req.url}` to console for every request. Use app.use() with a function that calls next().
-- Add graceful shutdown: after app.listen(), add process.on('SIGTERM', ...) and process.on('SIGINT', ...) handlers that call server.close() and then process.exit(0). Store the return value of app.listen() in a variable named `server` so it can be closed.
-- Add a conversation cleanup: add a route DELETE /api/conversations which clears ALL conversations from the Map (useful for testing). Returns { ok: true, cleared: count }.
-- Commit with: feat: request logging, graceful shutdown, bulk conversation clear endpoint
+- Track server start time: add `const startTime = new Date();` near the top of the file (after client initialization).
+- Add GET /api/stats endpoint: returns a JSON object with: `{ uptime: Math.floor((Date.now() - startTime) / 1000), conversationCount: conversations.size, messageCount: totalMessages, version: "1.0.0" }` where `totalMessages` is computed by summing the length of all history arrays in the conversations Map.
+- Add a request counter: increment a counter on every request (in the logging middleware if it exists, or add one). Include `requestCount` in the stats endpoint response.
+- Commit with: feat: add /api/stats endpoint with uptime, conversation count, and request count
 
 Acceptance Criteria
-- Every HTTP request is logged to stdout with method, URL, and ISO timestamp
-- SIGTERM and SIGINT trigger graceful server close
-- DELETE /api/conversations (no id) clears all conversations and returns count
-- DELETE /api/conversations/:id (existing) still works per individual conversation
+- GET /api/stats returns uptime in seconds, conversationCount, messageCount, requestCount, version
+- uptime increases over time
+- conversationCount reflects active conversations in the Map
