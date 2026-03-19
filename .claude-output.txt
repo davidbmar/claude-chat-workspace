@@ -1,17 +1,16 @@
 Done.
 
----
-
 **Files changed:**
-- `server.js` — updated `GET /api/conversations` handler to return `{ conversations: [{ id, messageCount, preview }] }` instead of `{ ids: [...] }`
-- `docs/project-memory/sessions/S-2026-03-19-2005-conversations-api-preview.md` — new session doc
+- `server.js` — added request logging middleware, graceful shutdown handlers, `DELETE /api/conversations` bulk clear route
+- `docs/project-memory/sessions/S-2026-03-19-2010-server-robustness.md` — session doc
 
 **Commands run:**
-- `git pull` (no upstream, skipped)
+- `git fetch origin` / `git pull`
+- `node --check server.js` (syntax OK)
 - `git add` + `git commit`
 - `git push -u origin HEAD`
 
 **Notes:**
-- No test suite exists in this repo; the change is straightforward and covered by the acceptance criteria in the brief.
-- `GET /api/conversations/:id` and `DELETE /api/conversations/:id` are unchanged.
-- Preview truncation uses `slice(0, 60)` with no ellipsis, matching the spec exactly.
+- The bulk `DELETE /api/conversations` route is placed before `DELETE /api/conversations/:id` — critical for Express route ordering so `/api/conversations` isn't matched as `id="conversations"`.
+- No test suite exists in this project; syntax check passed.
+- No follow-on work needed for this scope.

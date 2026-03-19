@@ -1,4 +1,4 @@
-agentB-conversations-api — Sprint 4
+agentB-server-robustness — Sprint 5
 
 Previous Sprint Summary
 ─────────────────────────────────────────
@@ -64,9 +64,10 @@ Previous Sprint Summary
 Sprint-Level Context
 
 Goal
-- Add a localStorage-based chat history sidebar so users can return to previous conversations (F-005)
-- Fix the copy button overlap on narrow Claude bubbles (B-005)
-- Enhance the server conversations list endpoint to include a preview of the first message
+- Fix graceful handling of stale history entries when the server restarts and conversations are lost (B-006)
+- Add markdown heading rendering for # ## ### syntax (F-006)
+- Add markdown unordered list rendering for - item syntax (F-007)
+- Add server-side request logging and graceful shutdown (server robustness)
 
 Constraints
 - No two agents may modify the same files
@@ -75,17 +76,17 @@ Constraints
 
 
 Objective
-- Enhance the server-side conversations API to include message previews in the list
+- Add request logging and graceful shutdown to the server
 
 Tasks
 - Open server.js and read it fully before making changes
-- Update GET /api/conversations: instead of returning `{ ids: [...] }`, return `{ conversations: [ { id, messageCount, preview } ] }` where `preview` is the first user message content truncated to 60 characters, and `messageCount` is the total number of messages in history. If the conversation has no messages, set preview to "".
-- Keep GET /api/conversations/:id unchanged (still returns full history).
-- Keep DELETE /api/conversations/:id unchanged.
-- Commit with: feat: enhance conversations list API with preview and message count
+- Add request logging middleware: before app.use(express.json()), add a simple middleware that logs `[${new Date().toISOString()}] ${req.method} ${req.url}` to console for every request. Use app.use() with a function that calls next().
+- Add graceful shutdown: after app.listen(), add process.on('SIGTERM', ...) and process.on('SIGINT', ...) handlers that call server.close() and then process.exit(0). Store the return value of app.listen() in a variable named `server` so it can be closed.
+- Add a conversation cleanup: add a route DELETE /api/conversations which clears ALL conversations from the Map (useful for testing). Returns { ok: true, cleared: count }.
+- Commit with: feat: request logging, graceful shutdown, bulk conversation clear endpoint
 
 Acceptance Criteria
-- GET /api/conversations returns `{ conversations: [{ id, messageCount, preview }] }` array
-- Preview is the first user message truncated to 60 chars
-- Empty conversations return preview: ""
-- Individual GET /api/conversations/:id still works as before
+- Every HTTP request is logged to stdout with method, URL, and ISO timestamp
+- SIGTERM and SIGINT trigger graceful server close
+- DELETE /api/conversations (no id) clears all conversations and returns count
+- DELETE /api/conversations/:id (existing) still works per individual conversation
