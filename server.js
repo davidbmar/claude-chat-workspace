@@ -40,7 +40,12 @@ async function* streamResponse(messages, model) {
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
 app.get('/api/conversations', (_req, res) => {
-  res.json({ ids: [...conversations.keys()] });
+  const list = [...conversations.entries()].map(([id, history]) => {
+    const firstUser = history.find(m => m.role === 'user');
+    const preview = firstUser ? firstUser.content.slice(0, 60) : '';
+    return { id, messageCount: history.length, preview };
+  });
+  res.json({ conversations: list });
 });
 
 app.get('/api/conversations/:id', (req, res) => {
