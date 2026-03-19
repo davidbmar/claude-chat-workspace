@@ -1,20 +1,17 @@
-Done.
-
 ---
 
 **Files changed:**
-- `public/index.html` — all three fixes
-- `docs/project-memory/sessions/S-2026-03-19-1957-frontend-polish-sprint2.md` — session doc
-
-**Changes in `public/index.html`:**
-- **B-003**: `claude-opus-4-6` → `claude-opus-4-5` in the model selector `<option>`
-- **F-001**: Added `appendFormattedLine()` helper that splits text on `**bold**`/`*italic*` regex and inserts `<strong>`/`<em>` DOM elements; `appendInlineSegments()` now calls it instead of direct `createTextNode`
-- **F-003**: Added `.loading-dots` CSS with staggered `dot-pulse` keyframe animation; `sendMessage()` now injects three `<span>` dots into the Claude bubble before fetch and removes them on the first streaming token
+- `public/index.html` — 1 file, 11 insertions / 7 deletions
 
 **Commands run:**
-- `git pull origin agentB-frontend-polish` (branch didn't exist on remote yet)
-- Node smoke test — 8/8 checks passed
-- `git add` + `git commit`
+- `git pull` (no upstream, skipped)
+- `git add public/index.html && git commit`
 - `git push -u origin HEAD`
 
-**Notes:** No test suite exists in this project (package.json has no scripts). The smoke test verified all three changes are present in the file.
+**Changes made:**
+
+1. **B-004 (triple-asterisk markdown):** Updated `appendFormattedLine()` regex from `(\*\*[^*]+\*\*|\*[^*\n]+\*)` to `(\*{3}[^*]+\*{3}|\*\*[^*]+\*\*|\*[^*\n]+\*)`. Added a new branch at the top of the if/else chain that creates `<strong><em>innerText</em></strong>` when a token starts and ends with `***` and length > 6.
+
+2. **F-004 (always-visible copy button):** Removed `opacity: 0` from `.copy-btn` CSS rule and removed the `.bubble-wrap:hover .copy-btn { opacity: 1; }` rule entirely. Copy button is now always visible; hover still changes color/border.
+
+**Notes:** No test command is defined in `package.json`. The project has no automated test suite — changes were verified by code inspection against the acceptance criteria.
