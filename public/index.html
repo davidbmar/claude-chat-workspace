@@ -425,9 +425,17 @@
   // Render history list on page load
   renderHistoryList();
 
-  // Track model selection
+  // Restore saved model on page load
+  var savedModel = localStorage.getItem('selectedModel');
+  if (savedModel) {
+    modelSelector.value = savedModel;
+    currentModel = savedModel;
+  }
+
+  // Track model selection and persist it
   modelSelector.addEventListener('change', function () {
     currentModel = modelSelector.value;
+    localStorage.setItem('selectedModel', currentModel);
   });
 
   // New Chat: generate a fresh conversation ID and reset the thread
