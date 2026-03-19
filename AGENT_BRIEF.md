@@ -1,4 +1,4 @@
-agentB-server-stats — Sprint 6
+agentA-history-delete — Sprint 7
 
 Previous Sprint Summary
 ─────────────────────────────────────────
@@ -64,10 +64,9 @@ Previous Sprint Summary
 Sprint-Level Context
 
 Goal
-- Complete markdown rendering: ordered lists (F-008) and horizontal rules (F-009)
-- Fix copy button overlap on narrow bubbles (B-005)
-- Make layout responsive for mobile screens (F-010)
-- Add server stats endpoint and conversation count endpoint
+- Add delete button to history sidebar entries (F-011)
+- Add character count display below Claude responses (F-012 frontend)
+- Add character count to the SSE stream done event (F-012 backend)
 
 Constraints
 - No two agents may modify the same files
@@ -76,16 +75,17 @@ Constraints
 
 
 Objective
-- Add a stats endpoint to the server
+- Add delete buttons to history entries and display character count below Claude responses
 
 Tasks
-- Open server.js and read it fully before making changes
-- Track server start time: add `const startTime = new Date();` near the top of the file (after client initialization).
-- Add GET /api/stats endpoint: returns a JSON object with: `{ uptime: Math.floor((Date.now() - startTime) / 1000), conversationCount: conversations.size, messageCount: totalMessages, version: "1.0.0" }` where `totalMessages` is computed by summing the length of all history arrays in the conversations Map.
-- Add a request counter: increment a counter on every request (in the logging middleware if it exists, or add one). Include `requestCount` in the stats endpoint response.
-- Commit with: feat: add /api/stats endpoint with uptime, conversation count, and request count
+- Open public/index.html and read it fully before making changes
+- Add F-011: In the history item rendering function, add a small delete button `×` to the right of each history entry title. Style it: `float: right; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 0 2px; line-height: 1;`. On click (stop propagation so it doesn't trigger the conversation reload): (1) remove the entry from the localStorage `chat-history` array by filtering out the matching id, (2) call DELETE /api/conversations/:id to remove server-side history, (3) re-render the history list. If the deleted conversation is currently active (conversationId matches), clear the thread and show empty state.
+- Add F-012 (frontend part): After a Claude response completes streaming (after `claudeBubble.classList.remove('cursor')`), check if the bubble has a `data-charcount` attribute. If so, append a small muted label below the bubble showing "N chars". Add CSS for this label: `.char-count { font-size: 10px; color: var(--text-muted); margin-top: 2px; text-align: right; }`. The character count value should be read from the `data-charcount` attribute set on the bubble, which will be set by reading a `chars` field from the final SSE `done` event.
+- Commit with: feat: history entry delete button and character count display (F-011, F-012 frontend)
 
 Acceptance Criteria
-- GET /api/stats returns uptime in seconds, conversationCount, messageCount, requestCount, version
-- uptime increases over time
-- conversationCount reflects active conversations in the Map
+- Each history entry shows a × button on the right
+- Clicking × removes the entry from localStorage and calls DELETE /api/conversations/:id
+- If the deleted conversation is active, the thread clears
+- Character count label appears below completed Claude responses
+- Character count comes from the SSE done event's `chars` field

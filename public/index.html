@@ -212,6 +212,11 @@
     .bubble li { margin: 2px 0; }
     hr { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
 
+    .char-count { font-size: 10px; color: var(--text-muted); margin-top: 2px; text-align: right; }
+
+    .delete-btn { float: right; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 0 2px; line-height: 1; }
+    .delete-btn:hover { color: var(--error); }
+
     /* Hamburger — hidden on desktop, shown on mobile */
     #hamburger-btn {
       display: none;
@@ -326,11 +331,48 @@
     history.forEach(function (entry) {
       var el = document.createElement('div');
       el.className = 'history-entry' + (entry.id === conversationId ? ' active' : '');
-      el.textContent = entry.title || '(untitled)';
       el.title = entry.title || '';
+
+      var delBtn = document.createElement('button');
+      delBtn.className = 'delete-btn';
+      delBtn.textContent = '\u00D7';
+      delBtn.title = 'Delete conversation';
+      delBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        deleteConversation(entry.id);
+      });
+      el.appendChild(delBtn);
+      el.appendChild(document.createTextNode(entry.title || '(untitled)'));
+
       el.addEventListener('click', function () { loadConversation(entry.id); });
       historyList.appendChild(el);
     });
+  }
+
+  function deleteConversation(id) {
+    var history = getHistory().filter(function (h) { return h.id !== id; });
+    saveHistory(history);
+
+    fetch('/api/conversations/' + id, { method: 'DELETE' }).catch(function () {});
+
+    if (conversationId === id) {
+      conversationId = crypto.randomUUID();
+      firstMessageSent = false;
+      while (thread.firstChild) thread.removeChild(thread.firstChild);
+      var es = document.createElement('div');
+      es.id = 'empty-state';
+      var icon = document.createElement('span');
+      icon.className = 'big-icon';
+      icon.textContent = '\uD83D\uDCAC';
+      var p = document.createElement('p');
+      p.textContent = 'Ask Claude anything to get started.';
+      es.appendChild(icon);
+      es.appendChild(p);
+      thread.appendChild(es);
+      emptyState = es;
+    }
+
+    renderHistoryList();
   }
 
   async function loadConversation(id) {
@@ -557,6 +599,9 @@
             claudeBubble.closest('.msg').classList.add('error');
             renderTextInto(claudeBubble, accumulated || ('Error: ' + parsed.error));
           }
+          if (parsed.done && parsed.chars !== undefined) {
+            claudeBubble.dataset.charcount = parsed.chars;
+          }
         }
       }
     } catch (err) {
@@ -565,6 +610,12 @@
     }
 
     claudeBubble.classList.remove('cursor');
+    if (claudeBubble.dataset.charcount) {
+      var charLabel = document.createElement('div');
+      charLabel.className = 'char-count';
+      charLabel.textContent = claudeBubble.dataset.charcount + ' chars';
+      claudeBubble.closest('.msg').appendChild(charLabel);
+    }
     scrollToBottom();
     setStreaming(false);
     input.focus();
