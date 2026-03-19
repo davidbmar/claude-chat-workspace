@@ -101,7 +101,7 @@
     .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
     @keyframes dot-pulse { 0%, 60%, 100% { opacity: 0.2; transform: scale(0.8); } 30% { opacity: 1; transform: scale(1); } }
 
-    /* Copy button — hidden by default, shown on bubble-wrap hover */
+    /* Copy button — always visible */
     .copy-btn {
       position: absolute;
       top: 6px;
@@ -113,11 +113,9 @@
       font-size: 11px;
       padding: 2px 6px;
       cursor: pointer;
-      opacity: 0;
-      transition: opacity 0.15s, color 0.15s;
+      transition: color 0.15s;
       white-space: nowrap;
     }
-    .bubble-wrap:hover .copy-btn { opacity: 1; }
     .copy-btn:hover { color: var(--text); border-color: var(--accent); }
 
     #input-area {
@@ -474,12 +472,18 @@
     }
   }
 
-  // Renders a single line of text with **bold** and *italic* support (no newlines).
+  // Renders a single line of text with ***bold+italic***, **bold**, and *italic* support (no newlines).
   function appendFormattedLine(parent, text) {
-    var parts = text.split(/(\*\*[^*]+\*\*|\*[^*\n]+\*)/g);
+    var parts = text.split(/(\*{3}[^*]+\*{3}|\*\*[^*]+\*\*|\*[^*\n]+\*)/g);
     for (var i = 0; i < parts.length; i++) {
       var p = parts[i];
-      if (p.startsWith('**') && p.endsWith('**') && p.length > 4) {
+      if (p.startsWith('***') && p.endsWith('***') && p.length > 6) {
+        var strong = document.createElement('strong');
+        var em = document.createElement('em');
+        em.textContent = p.slice(3, -3);
+        strong.appendChild(em);
+        parent.appendChild(strong);
+      } else if (p.startsWith('**') && p.endsWith('**') && p.length > 4) {
         var strong = document.createElement('strong');
         strong.textContent = p.slice(2, -2);
         parent.appendChild(strong);
