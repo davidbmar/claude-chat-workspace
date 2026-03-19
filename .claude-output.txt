@@ -1,15 +1,15 @@
-Done.
+---
 
 **Files changed:**
-- `server.js` — modified line 116: done event now includes `chars` and `words` fields
+- `public/index.html` — added localStorage restore on page load + save on model change
+
+**New files:**
+- `docs/project-memory/sessions/S-2026-03-19-2147-frontend-fixes-sprint8.md`
 
 **Commands run:**
-- `npm install` (to install missing deps for smoke test)
-- `node server.js` + `curl /api/health` (smoke test — server starts, health endpoint responds)
-- `git commit` + `git push`
+- `git pull origin agentA-frontend-fixes`
+- `git add`, `git commit`, `git push -u origin HEAD`
 
-**Change summary:** In `/api/chat`, the SSE `done` event payload was `{ done: true }` — now it's `{ done: true, chars: N, words: N }` where `chars` is `assistantText.length` and `words` uses `split(/\s+/).filter(Boolean).length` to handle whitespace edge cases accurately.
-
-**Notes / follow-on:**
-- Agent A (agentA-char-count branch) owns `public/index.html` and will consume these new fields to display the stats in the UI (F-012 frontend)
-- No existing tests to update; the project has no test suite yet
+**Notes:**
+- **B-005 (copy button overlap)** was already fixed — `padding-right: 56px` was present on `.msg.claude .bubble` (line 100) from a prior sprint. No change needed.
+- **B-008 (model persistence)** fixed: localStorage key `selectedModel` is now written on change and read on page load. Selecting Haiku and reloading will keep Haiku selected.
