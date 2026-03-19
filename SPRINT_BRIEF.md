@@ -1,10 +1,10 @@
-# Sprint 5
+# Sprint 6
 
 Goal
-- Fix graceful handling of stale history entries when the server restarts and conversations are lost (B-006)
-- Add markdown heading rendering for # ## ### syntax (F-006)
-- Add markdown unordered list rendering for - item syntax (F-007)
-- Add server-side request logging and graceful shutdown (server robustness)
+- Complete markdown rendering: ordered lists (F-008) and horizontal rules (F-009)
+- Fix copy button overlap on narrow bubbles (B-005)
+- Make layout responsive for mobile screens (F-010)
+- Add server stats endpoint and conversation count endpoint
 
 Constraints
 - No two agents may modify the same files
@@ -12,45 +12,46 @@ Constraints
 - Agent B owns: server.js
 
 Merge Order
-1. agentA-markdown-and-history-fixes
-2. agentB-server-robustness
+1. agentA-frontend-polish
+2. agentB-server-stats
 
 Merge Verification
 - echo "No automated tests yet — verify manually with: docker compose up"
 
-## agentA-markdown-and-history-fixes
+## agentA-frontend-polish
 
 Objective
-- Improve the markdown renderer with heading and list support, and handle stale history entries gracefully
+- Complete the markdown renderer and make the UI responsive on mobile
 
 Tasks
 - Open public/index.html and read it fully before making changes
-- Fix B-006: In the history item click handler, when fetching GET /api/conversations/:id, handle the case where the server returns a 404 (conversation not found after server restart). If a 404 is returned: show a small inline error message in the thread like "This conversation is no longer available (server was restarted)." Remove the stale entry from localStorage and re-render the history list.
-- Add F-006: In renderTextInto(), after splitting on fenced code blocks, detect lines starting with # markdown headings BEFORE calling appendInlineSegments. In the text-part processing, split on newlines first, then check if each line starts with `# `, `## `, or `### ` and create the appropriate heading element (h1, h2, h3) with the heading text content. Apply inline formatting (bold/italic/code) to heading content too.
-- Add F-007: In renderTextInto() (or appendInlineSegments), detect contiguous lines starting with `- ` and group them into a `<ul>` element with `<li>` children. Each list item text should have inline formatting (bold/italic/code) applied via appendFormattedLine(). A blank line or a non-list line ends the current list.
-- Commit with: feat: markdown headings and lists, graceful stale history handling (B-006, F-006, F-007)
+- Fix B-005: Increase padding-right on `.msg.claude .bubble` from whatever it currently is to at least 56px, so the always-visible copy button never overlaps text.
+- Add F-008 (ordered lists): In the renderTextInto() function, add support for numbered lists. Detect contiguous lines matching `/^\d+\. /` (e.g., "1. First", "2. Second"). Group them into an `<ol>` element with `<li>` children. Apply inline formatting (bold/italic/code) to each list item. A blank line or non-list line ends the list.
+- Add F-009 (horizontal rules): In renderTextInto(), detect lines that are exactly `---` or `***` (after trim) and replace them with an `<hr>` element. Add CSS for `hr { border: none; border-top: 1px solid var(--border); margin: 8px 0; }`.
+- Add F-010 (mobile responsive): Add CSS media query `@media (max-width: 600px)` that: hides the sidebar (`#sidebar { display: none; }`), makes the chat area use full width, and adjusts the header to wrap on small screens. Also add a hamburger button `☰` that toggles the sidebar on mobile (toggling a `.sidebar-open` class on `#sidebar` that sets `display: flex` and position: fixed + full-height overlay). The hamburger button should appear in the header only on mobile (hide with CSS on desktop).
+- Commit with: feat: ordered lists, horizontal rules, mobile responsive layout, copy button fix (F-008, F-009, F-010, B-005)
 
 Acceptance Criteria
-- Clicking a stale history entry shows an inline error and removes the entry from localStorage
-- Claude responses with # Heading render as h1/h2/h3 elements (not raw # text)
-- Claude responses with - list item render as <ul><li> elements
-- Bold, italic, and inline code still work inside headings and list items
-- No regressions in existing code block or bold/italic rendering
+- Copy button no longer overlaps text (padding-right >= 56px)
+- Numbered lists render as <ol><li> elements
+- --- and *** on their own line render as <hr>
+- On screens <= 600px the sidebar is hidden and a hamburger button appears
+- Hamburger button toggles sidebar on mobile
+- Desktop layout is unchanged
 
-## agentB-server-robustness
+## agentB-server-stats
 
 Objective
-- Add request logging and graceful shutdown to the server
+- Add a stats endpoint to the server
 
 Tasks
 - Open server.js and read it fully before making changes
-- Add request logging middleware: before app.use(express.json()), add a simple middleware that logs `[${new Date().toISOString()}] ${req.method} ${req.url}` to console for every request. Use app.use() with a function that calls next().
-- Add graceful shutdown: after app.listen(), add process.on('SIGTERM', ...) and process.on('SIGINT', ...) handlers that call server.close() and then process.exit(0). Store the return value of app.listen() in a variable named `server` so it can be closed.
-- Add a conversation cleanup: add a route DELETE /api/conversations which clears ALL conversations from the Map (useful for testing). Returns { ok: true, cleared: count }.
-- Commit with: feat: request logging, graceful shutdown, bulk conversation clear endpoint
+- Track server start time: add `const startTime = new Date();` near the top of the file (after client initialization).
+- Add GET /api/stats endpoint: returns a JSON object with: `{ uptime: Math.floor((Date.now() - startTime) / 1000), conversationCount: conversations.size, messageCount: totalMessages, version: "1.0.0" }` where `totalMessages` is computed by summing the length of all history arrays in the conversations Map.
+- Add a request counter: increment a counter on every request (in the logging middleware if it exists, or add one). Include `requestCount` in the stats endpoint response.
+- Commit with: feat: add /api/stats endpoint with uptime, conversation count, and request count
 
 Acceptance Criteria
-- Every HTTP request is logged to stdout with method, URL, and ISO timestamp
-- SIGTERM and SIGINT trigger graceful server close
-- DELETE /api/conversations (no id) clears all conversations and returns count
-- DELETE /api/conversations/:id (existing) still works per individual conversation
+- GET /api/stats returns uptime in seconds, conversationCount, messageCount, requestCount, version
+- uptime increases over time
+- conversationCount reflects active conversations in the Map
