@@ -1,20 +1,16 @@
 Done.
 
----
-
 **Files changed:**
-- `public/index.html` — all three fixes
-- `docs/project-memory/sessions/S-2026-03-19-1957-frontend-polish-sprint2.md` — session doc
-
-**Changes in `public/index.html`:**
-- **B-003**: `claude-opus-4-6` → `claude-opus-4-5` in the model selector `<option>`
-- **F-001**: Added `appendFormattedLine()` helper that splits text on `**bold**`/`*italic*` regex and inserts `<strong>`/`<em>` DOM elements; `appendInlineSegments()` now calls it instead of direct `createTextNode`
-- **F-003**: Added `.loading-dots` CSS with staggered `dot-pulse` keyframe animation; `sendMessage()` now injects three `<span>` dots into the Claude bubble before fetch and removes them on the first streaming token
+- `server.js` — added 3 new endpoints (GET /api/conversations, GET /api/conversations/:id, DELETE /api/conversations/:id)
+- `docs/project-memory/sessions/S-2026-03-19-2001-history-api.md` — session doc
 
 **Commands run:**
-- `git pull origin agentB-frontend-polish` (branch didn't exist on remote yet)
-- Node smoke test — 8/8 checks passed
+- `git pull origin main`
+- `node --check server.js` (syntax OK)
 - `git add` + `git commit`
 - `git push -u origin HEAD`
 
-**Notes:** No test suite exists in this project (package.json has no scripts). The smoke test verified all three changes are present in the file.
+**Notes:**
+- No test framework exists in the project; syntax validation passed.
+- All three endpoints operate on the existing in-memory `conversations` Map — no persistence layer added (consistent with existing design).
+- Unknown IDs return `404 { error: 'not found' }` on both GET and DELETE as specified.
