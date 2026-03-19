@@ -6,8 +6,12 @@ const Anthropic = require('@anthropic-ai/sdk');
 
 const app = express();
 
+const startTime = new Date();
+let requestCount = 0;
+
 // Request logging middleware
 app.use((req, _res, next) => {
+  requestCount++;
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   next();
 });
@@ -45,6 +49,17 @@ async function* streamResponse(messages, model) {
 }
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
+
+app.get('/api/stats', (_req, res) => {
+  const totalMessages = [...conversations.values()].reduce((sum, h) => sum + h.length, 0);
+  res.json({
+    uptime: Math.floor((Date.now() - startTime) / 1000),
+    conversationCount: conversations.size,
+    messageCount: totalMessages,
+    requestCount,
+    version: '1.0.0',
+  });
+});
 
 app.get('/api/conversations', (_req, res) => {
   const list = [...conversations.entries()].map(([id, history]) => {
