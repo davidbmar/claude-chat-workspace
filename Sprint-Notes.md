@@ -1,10 +1,10 @@
-# Sprint 7 — Agent Notes
+# Sprint 8 — Agent Notes
 
-*Started: 2026-03-19 20:20 UTC*
+*Started: 2026-03-19 21:47 UTC*
 
 Phase 1 Agents: 2
-- agentA-history-delete
-- agentB-char-count
+- agentA-frontend-fixes
+- agentB-table-renderer
 
 Phase 2 Agents: 0
 (none)
@@ -13,41 +13,43 @@ Automated summaries from each agent are appended below as they complete.
 
 ---
 
-## agentB-char-count
+## agentA-frontend-fixes
 
-*Completed: 2026-03-19 20:21 UTC*
+*Completed: 2026-03-19 21:48 UTC*
 
 **Files changed:**
-- `server.js` — modified line 116: done event now includes `chars` and `words` fields
+- `public/index.html` — added localStorage restore on page load + save on model change
+
+**New files:**
+- `docs/project-memory/sessions/S-2026-03-19-2147-frontend-fixes-sprint8.md`
 
 **Commands run:**
-- `npm install` (to install missing deps for smoke test)
-- `node server.js` + `curl /api/health` (smoke test — server starts, health endpoint responds)
-- `git commit` + `git push`
+- `git pull origin agentA-frontend-fixes`
+- `git add`, `git commit`, `git push -u origin HEAD`
 
-**Change summary:** In `/api/chat`, the SSE `done` event payload was `{ done: true }` — now it's `{ done: true, chars: N, words: N }` where `chars` is `assistantText.length` and `words` uses `split(/\s+/).filter(Boolean).length` to handle whitespace edge cases accurately.
-
-**Notes / follow-on:**
-- Agent A (agentA-char-count branch) owns `public/index.html` and will consume these new fields to display the stats in the UI (F-012 frontend)
-- No existing tests to update; the project has no test suite yet
+**Notes:**
+- **B-005 (copy button overlap)** was already fixed — `padding-right: 56px` was present on `.msg.claude .bubble` (line 100) from a prior sprint. No change needed.
+- **B-008 (model persistence)** fixed: localStorage key `selectedModel` is now written on change and read on page load. Selecting Haiku and reloading will keep Haiku selected.
 
 
 ---
 
-## agentA-history-delete
+## agentB-table-renderer
 
-*Completed: 2026-03-19 20:22 UTC*
+*Completed: 2026-03-19 21:49 UTC*
 
-**Files changed:**
-- `public/index.html` — added delete buttons to history entries, `deleteConversation()` function, SSE `done`/`chars` handling, and char count label display
-- `docs/project-memory/sessions/S-2026-03-19-2022-history-delete-charcount.md` — session doc
+**Files changed**
+- `public/index.html` — added `parseTableCells()` helper function and GFM table block detection inside `processTextLines()`
+- `docs/project-memory/sessions/S-2026-03-19-2149-table-renderer.md` — session doc
 
-**Commands run:**
-- `git pull` (branch not yet on remote)
-- `git add && git commit`
-- `git push -u origin HEAD`
+**Commands run**
+- `git fetch origin` — checked for agentA's branch (not on remote yet; agentA and agentB edits are in different areas of the file, so no conflict risk)
+- Node.js syntax validation — script block parsed cleanly
+- `git commit` + `git push -u origin HEAD`
 
-**Notes / follow-on work:**
-- F-012 backend (agentB): `server.js` needs to emit `data: {"done":true,"chars":N}` at the end of the SSE stream for the char count label to populate. The frontend reads `data-charcount` which is only set when that event arrives — if agentB hasn't implemented it yet, the label simply won't appear (graceful degradation).
-- The DELETE `/api/conversations/:id` endpoint also needs to exist in `server.js` (agentB's scope).
+**Implementation details**
+The table detector checks two conditions before collecting lines: the current line must match `/^\|.+\|$/` and the _next_ line must match `/^\|[-| :]+\|$/` (separator row). This two-line lookahead prevents false positives from single pipe-containing lines. Table lines are consumed via inner while-loop with `i--` before `continue` to counteract the outer for-loop increment. All cell text is set via `textContent` — no `innerHTML` anywhere, consistent with the renderer's XSS-safe design.
+
+**Follow-on work**
+- AgentA's changes to `public/index.html` (model persistence, copy button overlap) will need a clean merge against this branch — the modified regions don't overlap, so it should be conflict-free.
 
