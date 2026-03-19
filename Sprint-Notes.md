@@ -1,10 +1,10 @@
-# Sprint 6 — Agent Notes
+# Sprint 7 — Agent Notes
 
-*Started: 2026-03-19 20:15 UTC*
+*Started: 2026-03-19 20:20 UTC*
 
 Phase 1 Agents: 2
-- agentA-frontend-polish
-- agentB-server-stats
+- agentA-history-delete
+- agentB-char-count
 
 Phase 2 Agents: 0
 (none)
@@ -13,52 +13,41 @@ Automated summaries from each agent are appended below as they complete.
 
 ---
 
-## agentB-server-stats
+## agentB-char-count
 
-*Completed: 2026-03-19 20:16 UTC*
+*Completed: 2026-03-19 20:21 UTC*
 
-**Files changed**
-- `server.js` — added `startTime`, `requestCount`, middleware increment, and `GET /api/stats` route
-- `docs/project-memory/sessions/S-2026-03-19-2016-server-stats.md` — session doc
+**Files changed:**
+- `server.js` — modified line 116: done event now includes `chars` and `words` fields
 
-**Commands run**
-- `node --check server.js` — syntax OK
-- `git commit` + `git push -u origin HEAD`
+**Commands run:**
+- `npm install` (to install missing deps for smoke test)
+- `node server.js` + `curl /api/health` (smoke test — server starts, health endpoint responds)
+- `git commit` + `git push`
 
-**Notes**
-- No test framework exists in the project (`package.json` has no `test` script); syntax check via `node --check` was used instead.
-- `GET /api/stats` returns: `{ uptime, conversationCount, messageCount, requestCount, version: "1.0.0" }` — all acceptance criteria satisfied.
-- `requestCount` includes the `/api/stats` call itself (counted in middleware before routing), which is the most accurate representation of total server traffic.
+**Change summary:** In `/api/chat`, the SSE `done` event payload was `{ done: true }` — now it's `{ done: true, chars: N, words: N }` where `chars` is `assistantText.length` and `words` uses `split(/\s+/).filter(Boolean).length` to handle whitespace edge cases accurately.
+
+**Notes / follow-on:**
+- Agent A (agentA-char-count branch) owns `public/index.html` and will consume these new fields to display the stats in the UI (F-012 frontend)
+- No existing tests to update; the project has no test suite yet
 
 
 ---
 
-## agentA-frontend-polish
+## agentA-history-delete
 
-*Completed: 2026-03-19 20:18 UTC*
+*Completed: 2026-03-19 20:22 UTC*
 
 **Files changed:**
-- `public/index.html` — all four feature/fix implementations
-- `docs/project-memory/sessions/S-2026-03-19-2017-frontend-polish-sprint6.md` — session doc (new)
-- `AGENT_BRIEF.md`, `.claude-output.txt` — pre-existing dirty files staged by sprint harness
+- `public/index.html` — added delete buttons to history entries, `deleteConversation()` function, SSE `done`/`chars` handling, and char count label display
+- `docs/project-memory/sessions/S-2026-03-19-2022-history-delete-charcount.md` — session doc
 
 **Commands run:**
-1. `git pull origin agentA-frontend-polish` (branch not yet on remote — no-op)
-2. Read `AGENT_BRIEF.md` and `public/index.html`
-3. 6× `Edit` on `public/index.html`
-4. `git add` + `git commit`
-5. `git push -u origin agentA-frontend-polish`
-
-**Changes summary:**
-| Task | Change |
-|------|--------|
-| B-005 | `padding-right` on `.msg.claude .bubble`: 52px → **56px** |
-| F-008 | Ordered list detection (`/^\d+\. /`) in `processTextLines()` → `<ol><li>` |
-| F-009 | HR detection (`---`/`***`) → `<hr>`; added HR CSS |
-| F-010 | `@media (max-width: 600px)` hides sidebar; `#hamburger-btn` (☰) toggles `.sidebar-open` |
+- `git pull` (branch not yet on remote)
+- `git add && git commit`
+- `git push -u origin HEAD`
 
 **Notes / follow-on work:**
-- No test suite exists; visual testing in a browser is needed to confirm mobile behaviour
-- The hamburger button does not auto-close the sidebar when clicking a history entry — a small UX improvement for a future sprint
-- Desktop layout is entirely unchanged (hamburger is `display: none` above 600px)
+- F-012 backend (agentB): `server.js` needs to emit `data: {"done":true,"chars":N}` at the end of the SSE stream for the char count label to populate. The frontend reads `data-charcount` which is only set when that event arrives — if agentB hasn't implemented it yet, the label simply won't appear (graceful degradation).
+- The DELETE `/api/conversations/:id` endpoint also needs to exist in `server.js` (agentB's scope).
 
