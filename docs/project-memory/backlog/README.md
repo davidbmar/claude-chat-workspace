@@ -52,5 +52,5 @@ What should happen?
 | F-008 | Markdown ordered list rendering (1. item) | Implemented in Sprint 6: numbered lists render as `<ol><li>` elements. | low | Done (Sprint 6) |
 | F-009 | Markdown horizontal rule (---) | Implemented in Sprint 6: `---` lines render as `<hr>` elements. | low | Done (Sprint 6) |
 | F-010 | Mobile responsive layout | Implemented in Sprint 6: sidebar hides on screens <= 600px, hamburger button toggles it. | medium | Done (Sprint 6) |
-| F-011 | Delete conversation from history sidebar | Users cannot remove individual conversations from the history sidebar. Add a small delete button (x) on each history entry that removes it from localStorage and optionally calls DELETE /api/conversations/:id. | low | Open |
-| F-012 | Character/token usage display | Show approximate token count or character count for each Claude response. This helps users understand model usage. Can be shown as a small muted label below the bubble. | low | Open |
+| F-011 | Delete conversation from history sidebar | Implemented in Sprint 7: × button on each history entry removes from localStorage and calls DELETE /api/conversations/:id. | low | Done (Sprint 7) |
+| F-012 | Character/token usage display | Implemented in Sprint 7: SSE done event includes `chars` and `words` counts; frontend shows "N chars" label below Claude responses. | low | Done (Sprint 7) |

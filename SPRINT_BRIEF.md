@@ -1,52 +1,50 @@
-# Sprint 7
+# Sprint 8
 
 Goal
-- Add delete button to history sidebar entries (F-011)
-- Add character count display below Claude responses (F-012 frontend)
-- Add character count to the SSE stream done event (F-012 backend)
+- Fix markdown table rendering (B-007): GFM pipe-table syntax renders as raw text
+- Fix model selection persistence (B-008): model selector resets to Sonnet on page reload
+- Fix copy button overlap on short responses (B-005): needs minimum padding-right ~56px
 
 Constraints
 - No two agents may modify the same files
-- Agent A owns: public/index.html
-- Agent B owns: server.js
+- Agent A owns: public/index.html (model persistence + copy button overlap fix)
+- Agent B owns: public/index.html table renderer — NOTE: agents must coordinate; agentA commits first, agentB must git pull before editing
 
 Merge Order
-1. agentA-history-delete
-2. agentB-char-count
+1. agentA-frontend-fixes
+2. agentB-table-renderer
 
 Merge Verification
-- echo "No automated tests yet — verify manually with: docker compose up"
+- echo "No automated tests — verify manually with: docker compose up"
 
-## agentA-history-delete
-
-Objective
-- Add delete buttons to history entries and display character count below Claude responses
-
-Tasks
-- Open public/index.html and read it fully before making changes
-- Add F-011: In the history item rendering function, add a small delete button `×` to the right of each history entry title. Style it: `float: right; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 0 2px; line-height: 1;`. On click (stop propagation so it doesn't trigger the conversation reload): (1) remove the entry from the localStorage `chat-history` array by filtering out the matching id, (2) call DELETE /api/conversations/:id to remove server-side history, (3) re-render the history list. If the deleted conversation is currently active (conversationId matches), clear the thread and show empty state.
-- Add F-012 (frontend part): After a Claude response completes streaming (after `claudeBubble.classList.remove('cursor')`), check if the bubble has a `data-charcount` attribute. If so, append a small muted label below the bubble showing "N chars". Add CSS for this label: `.char-count { font-size: 10px; color: var(--text-muted); margin-top: 2px; text-align: right; }`. The character count value should be read from the `data-charcount` attribute set on the bubble, which will be set by reading a `chars` field from the final SSE `done` event.
-- Commit with: feat: history entry delete button and character count display (F-011, F-012 frontend)
-
-Acceptance Criteria
-- Each history entry shows a × button on the right
-- Clicking × removes the entry from localStorage and calls DELETE /api/conversations/:id
-- If the deleted conversation is active, the thread clears
-- Character count label appears below completed Claude responses
-- Character count comes from the SSE done event's `chars` field
-
-## agentB-char-count
+## agentA-frontend-fixes
 
 Objective
-- Include character count in the SSE done event and expose response stats
+- Fix model selector persistence across page reloads and fix copy button overlap on short responses
 
 Tasks
-- Open server.js and read it fully before making changes
-- In the /api/chat route handler, after the streaming loop completes and `assistantText` is populated, modify the done event to include the character count: instead of `res.write(\`data: ${JSON.stringify({ done: true })}\n\n\`)`, send `res.write(\`data: ${JSON.stringify({ done: true, chars: assistantText.length })}\n\n\`)`.
-- Also add the word count: `words: assistantText.split(/\s+/).filter(Boolean).length` to the done event payload.
-- Commit with: feat: include char and word count in SSE done event (F-012 backend)
+- Edit public/index.html: in the model selector change event handler, add localStorage.setItem('selectedModel', this.value)
+- Edit public/index.html: on page load after DOMContentLoaded, read localStorage.getItem('selectedModel') and if truthy set document.getElementById('model-selector').value to the saved value
+- Edit public/index.html: in the .msg.claude CSS rule add padding-right: 56px so the Copy button does not overlap text on short bubbles
+- Commit with: fix: persist model selection in localStorage, fix copy button overlap (B-005, B-008)
 
 Acceptance Criteria
-- The SSE done event includes `chars: N` where N is the length of the assistant response text
-- The SSE done event includes `words: N` where N is the approximate word count
-- All existing functionality (streaming tokens, error handling) unchanged
+- Selecting Haiku and reloading the page keeps Haiku selected
+- Copy button does not visually overlap message text on short Claude responses
+
+## agentB-table-renderer
+
+Objective
+- Add GFM markdown table rendering to the DOM-based markdown renderer in public/index.html
+
+Tasks
+- Read public/index.html and understand the existing renderTextInto() DOM-based markdown renderer
+- Add table block detection: a contiguous group of lines where line 0 matches /^\|.+\|$/ and line 1 matches /^\|[-| :]+\|$/ — this is a GFM table
+- Parse header cells from line 0, skip line 1 (separator), parse data rows from remaining lines
+- Build table as DOM elements using createElement only (no innerHTML): table > thead > tr > th for headers, tbody > tr > td for data rows; set cell text via textContent
+- Insert the table as a block-level element alongside existing code blocks and paragraph text
+- Commit with: feat: GFM table rendering in DOM markdown renderer (B-007)
+
+Acceptance Criteria
+- A markdown table renders as an HTML table element, not raw pipe-delimited text
+- Existing rendering (headings, bold, italic, code blocks, lists) still works correctly
