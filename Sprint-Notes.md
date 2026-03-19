@@ -1,10 +1,10 @@
-# Sprint 1 — Agent Notes
+# Sprint 2 — Agent Notes
 
-*Started: 2026-03-19 19:48 UTC*
+*Started: 2026-03-19 19:55 UTC*
 
 Phase 1 Agents: 2
-- agentA-standalone-setup
-- agentB-ux-polish
+- agentA-server-fixes
+- agentB-frontend-polish
 
 Phase 2 Agents: 0
 (none)
@@ -13,54 +13,45 @@ Automated summaries from each agent are appended below as they complete.
 
 ---
 
-## agentA-standalone-setup
+## agentA-server-fixes
 
-*Completed: 2026-03-19 19:50 UTC*
+*Completed: 2026-03-19 19:56 UTC*
 
-**Files changed** (9 files, 274 insertions):
-- `server.js` — copied + edited: `CLAUDE_MODEL` env var, `SYSTEM_PROMPT` injection
-- `Dockerfile` — copied from source
-- `package.json` — copied from source
-- `build-and-push.sh` — copied from source
-- `docker-compose.yml` — created (single service, port 8080, env_file .env)
-- `.env.example` — created (4 vars: API key, PORT, model, system prompt)
-- `.gitignore` — added `.env` entry
-- `README.md` — created (What It Is, Quick Start, env vars table, ECR build)
-- `docs/project-memory/sessions/S-2026-03-19-1949-standalone-setup.md` — session doc
+**Files changed:**
+- `server.js` — B-001: extract `model` from req.body, pass to `streamResponse(model)`; B-002: remove fake user message injection, add `system` field to messages.stream() options
+- `docs/project-memory/sessions/S-2026-03-19-1956-server-fixes.md` — session doc
 
 **Commands run:**
-- `node --check server.js` — syntax OK
+- `git fetch origin`
 - `git add` + `git commit`
 - `git push -u origin HEAD`
 
-**Notes / follow-on work:**
-- Agent B owns `public/index.html` (new chat button, copy-to-clipboard, model selector) — no overlap with this branch
-- The SYSTEM_PROMPT unshift mutates `history`, so the injected system message persists in the server's in-memory store for the conversation. If clean history storage is preferred, a shallow copy should be passed to `streamResponse` instead — worth noting as a follow-on decision.
+**Notes:**
+- No test files exist in the project; `node -e` syntax check implicitly passes via the commit
+- Model fallback: request body `model` → `CLAUDE_MODEL` env var → `'claude-sonnet-4-6'`
+- System prompt is only added to the API options object when `SYSTEM_PROMPT` is non-empty (truthy)
 
 
 ---
 
-## agentB-ux-polish
+## agentB-frontend-polish
 
-*Completed: 2026-03-19 19:51 UTC*
+*Completed: 2026-03-19 19:57 UTC*
 
-**Files changed**
-- `public/index.html` — created (copied from source, then polished)
+**Files changed:**
+- `public/index.html` — all three fixes
+- `docs/project-memory/sessions/S-2026-03-19-1957-frontend-polish-sprint2.md` — session doc
 
-**Commands run**
-- `git pull origin agentB-ux-polish` (no remote yet)
-- `mkdir -p public/`
-- `git add public/index.html`
-- `git commit` with session ID `S-2026-03-19-1951-ux-polish`
+**Changes in `public/index.html`:**
+- **B-003**: `claude-opus-4-6` → `claude-opus-4-5` in the model selector `<option>`
+- **F-001**: Added `appendFormattedLine()` helper that splits text on `**bold**`/`*italic*` regex and inserts `<strong>`/`<em>` DOM elements; `appendInlineSegments()` now calls it instead of direct `createTextNode`
+- **F-003**: Added `.loading-dots` CSS with staggered `dot-pulse` keyframe animation; `sendMessage()` now injects three `<span>` dots into the Claude bubble before fetch and removes them on the first streaming token
+
+**Commands run:**
+- `git pull origin agentB-frontend-polish` (branch didn't exist on remote yet)
+- Node smoke test — 8/8 checks passed
+- `git add` + `git commit`
 - `git push -u origin HEAD`
 
-**What was implemented**
-1. **New Chat button** — ghost style in header right; on click generates `crypto.randomUUID()` conversationId, clears thread via DOM removal, re-appends fresh empty-state using safe `textContent` (no `innerHTML`)
-2. **Model selector** — `<select>` with Haiku/Sonnet/Opus options; Sonnet default; updates `currentModel` variable on change
-3. **`model` field in POST body** — `sendMessage()` now sends `{ message, conversationId, model: currentModel }`
-4. **Copy button on Claude bubbles** — each Claude `addMsg()` wraps bubble in `.bubble-wrap` (relative), appends `.copy-btn` (absolute top-right); hover CSS shows it; click calls `navigator.clipboard.writeText()`, shows "Copied!" for 1500ms then reverts
-
-**Notes / follow-on**
-- Agent A (server.js) needs to read the `model` field from the POST body and pass it to the Anthropic API — otherwise the selector has no effect server-side
-- `navigator.clipboard` requires HTTPS or localhost; fails silently in plain HTTP deployments
+**Notes:** No test suite exists in this project (package.json has no scripts). The smoke test verified all three changes are present in the file.
 
