@@ -1,55 +1,55 @@
-# Sprint 2
+# Sprint 3
 
 Goal
-- Fix two high-priority server-side bugs: model selector is ignored by server (B-001) and system prompt uses wrong API pattern (B-002)
-- Fix invalid Opus model ID in the frontend (B-003)
-- Add markdown bold/italic rendering in Claude bubbles (F-001)
-- Add a loading indicator before the first streaming token (F-003)
+- Fix the bold+italic combined markdown rendering bug (B-004) so ***text*** renders as bold+italic
+- Make the copy button always visible instead of hover-only (F-004)
+- Add a server-side endpoint to retrieve conversation history (needed for future history sidebar)
 
 Constraints
 - No two agents may modify the same files
-- Agent A owns: server.js
-- Agent B owns: public/index.html
+- Agent A owns: public/index.html
+- Agent B owns: server.js
 
 Merge Order
-1. agentA-server-fixes
-2. agentB-frontend-polish
+1. agentA-frontend-fixes
+2. agentB-history-api
 
 Merge Verification
 - echo "No automated tests yet — verify manually with: docker compose up"
 
-## agentA-server-fixes
+## agentA-frontend-fixes
 
 Objective
-- Fix server.js so it respects the per-request model sent by the frontend, and use the correct Anthropic API system parameter for system prompts
-
-Tasks
-- Open server.js and read it fully before making changes
-- Fix B-001: In the /api/chat route handler, extract `model` from req.body alongside `message` and `conversationId`. Pass the extracted model (falling back to process.env.CLAUDE_MODEL || 'claude-sonnet-4-6') into streamResponse() as a parameter. Update streamResponse() to accept a `model` argument and use it instead of always reading process.env.CLAUDE_MODEL.
-- Fix B-002: In the /api/chat route handler, remove the current system prompt injection that prepends a fake user message. Instead, pass process.env.SYSTEM_PROMPT directly to the Anthropic client.messages.stream() call as the `system` field (only when it is non-empty). The system field should be a top-level string in the messages.stream() options object, not a message in the history array.
-- Commit with: fix: respect per-request model and use Anthropic system parameter (B-001, B-002)
-
-Acceptance Criteria
-- server.js /api/chat extracts `model` from req.body and passes it to the API call
-- streamResponse() takes model as a parameter instead of reading env var directly
-- System prompt is passed as `system:` field in messages.stream(), not as a fake user message
-- Fallback to process.env.CLAUDE_MODEL || 'claude-sonnet-4-6' when no model in request body
-
-## agentB-frontend-polish
-
-Objective
-- Fix the invalid Opus model ID, add markdown bold/italic rendering, and add a loading indicator
+- Fix the triple-asterisk markdown rendering bug and make the copy button always visible
 
 Tasks
 - Open public/index.html and read it fully before making changes
-- Fix B-003: In the model selector <select>, change the Opus option value from 'claude-opus-4-6' to 'claude-opus-4-5'. Keep the display text "Opus — powerful".
-- Fix F-001: In the renderTextInto() JavaScript function, after handling fenced code blocks and inline code, add support for **bold** (wrap in <strong>) and *italic* (wrap in <em>) text. Implement this in the appendInlineSegments() function: after splitting on inline code backticks, further split text segments on bold/italic markers using regex and insert the appropriate DOM elements. Be careful to handle the case where * or ** appear in code spans (they should not be processed inside code elements).
-- Fix F-003: Add a loading indicator. After the user sends a message and before the first streaming token arrives, show a pulsing "..." animation inside the Claude bubble. Implement this by: (1) adding a CSS class `.loading-dots` with an animated content or child spans, and (2) in sendMessage(), adding the loading indicator to the claudeBubble immediately after creating it, then removing it as soon as the first token is received (before calling renderTextInto for the first time).
-- Commit with: fix: correct Opus model ID, add bold/italic rendering, add loading indicator (B-003, F-001, F-003)
+- Fix B-004: In the appendFormattedLine() function, update the regex split pattern to also handle ***text*** (bold+italic combined). The current pattern is `(\*\*[^*]+\*\*|\*[^*\n]+\*)`. Change it to handle three cases in order: (1) `***text***` → wrap in both <strong> and <em>, (2) `**text**` → wrap in <strong>, (3) `*text*` → wrap in <em>. The new regex should be `(\*{3}[^*]+\*{3}|\*\*[^*]+\*\*|\*[^*\n]+\*)`. Add a new branch at the top of the if/else chain: if p starts with *** and ends with *** and length > 6, create a <strong> containing an <em> with the inner text (strip 3 chars from each end).
+- Fix F-004: Make the copy button always visible by removing `opacity: 0` from the `.copy-btn` CSS rule and removing `.bubble-wrap:hover .copy-btn { opacity: 1; }`. Instead, always show the copy button. Keep the hover styles for color change but remove the opacity hide/show.
+- Commit with: fix: triple-asterisk markdown rendering and always-visible copy button (B-004, F-004)
 
 Acceptance Criteria
-- Opus option value is 'claude-opus-4-5' (not 'claude-opus-4-6')
-- Claude responses with **bold** and *italic* text render correctly as <strong> and <em> elements
-- A loading animation appears in the Claude bubble between send and first token
-- Loading animation disappears when the first token arrives
+- ***bold italic*** text renders as bold+italic (strong>em) not raw asterisks
+- **bold** text still renders correctly as <strong>
+- *italic* text still renders correctly as <em>
+- Copy button is visible on all Claude bubbles without needing to hover
 - All changes committed to public/index.html only
+
+## agentB-history-api
+
+Objective
+- Add a server-side API endpoint to retrieve stored conversation history by ID
+
+Tasks
+- Open server.js and read it fully before making changes
+- Add GET /api/conversations/:id endpoint: if the conversationId exists in the conversations Map, return { messages: history } as JSON where history is the array of {role, content} objects. If not found, return 404 { error: 'not found' }.
+- Add GET /api/conversations endpoint: return a list of all active conversation IDs as { ids: [...] } — useful for the frontend to enumerate sessions.
+- Add DELETE /api/conversations/:id endpoint: removes the conversation from the Map and returns { ok: true }. If not found, returns 404.
+- Commit with: feat: add conversation history API endpoints (GET/DELETE /api/conversations)
+
+Acceptance Criteria
+- GET /api/conversations/:id returns the full message history for a known conversationId
+- GET /api/conversations returns all active conversation IDs
+- DELETE /api/conversations/:id removes the conversation
+- Unknown IDs return 404
+- All changes committed to server.js only
