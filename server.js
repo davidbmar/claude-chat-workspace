@@ -113,7 +113,7 @@ app.post('/api/chat', async (req, res) => {
       res.write(`data: ${JSON.stringify({ token })}\n\n`);
     }
     history.push({ role: 'assistant', content: assistantText });
-    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    res.write(`data: ${JSON.stringify({ done: true, chars: assistantText.length, words: assistantText.split(/\s+/).filter(Boolean).length })}\n\n`);
   } catch (err) {
     console.error('[chat] stream error:', err.message);
     res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
