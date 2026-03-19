@@ -95,6 +95,12 @@
     .cursor::after { content: '\25AE'; animation: blink 0.8s step-end infinite; color: var(--accent); font-size: 12px; }
     @keyframes blink { 50% { opacity: 0; } }
 
+    .loading-dots { display: inline-flex; gap: 4px; align-items: center; padding: 2px 0; }
+    .loading-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--text-muted); animation: dot-pulse 1.2s infinite; }
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes dot-pulse { 0%, 60%, 100% { opacity: 0.2; transform: scale(0.8); } 30% { opacity: 1; transform: scale(1); } }
+
     /* Copy button — hidden by default, shown on bubble-wrap hover */
     .copy-btn {
       position: absolute;
@@ -203,7 +209,7 @@
       <select id="model-selector" title="Select model">
         <option value="claude-haiku-4-5-20251001">Haiku &#x2014; fast</option>
         <option value="claude-sonnet-4-6" selected>Sonnet &#x2014; balanced</option>
-        <option value="claude-opus-4-6">Opus &#x2014; powerful</option>
+        <option value="claude-opus-4-5">Opus &#x2014; powerful</option>
       </select>
       <button id="new-chat-btn" title="Start a new conversation">+ New Chat</button>
     </div>
@@ -357,6 +363,12 @@
     var claudeBubble = addMsg('claude');
     claudeBubble.classList.add('cursor');
 
+    var loadingDots = document.createElement('div');
+    loadingDots.className = 'loading-dots';
+    for (var k = 0; k < 3; k++) loadingDots.appendChild(document.createElement('span'));
+    claudeBubble.appendChild(loadingDots);
+    var firstToken = true;
+
     var accumulated = '';
 
     try {
@@ -388,6 +400,10 @@
           try { parsed = JSON.parse(line.slice(6)); } catch (e) { continue; }
 
           if (parsed.token) {
+            if (firstToken) {
+              claudeBubble.removeChild(loadingDots);
+              firstToken = false;
+            }
             accumulated += parsed.token;
             renderTextInto(claudeBubble, accumulated);
             scrollToBottom();
@@ -448,12 +464,31 @@
         code.textContent = seg.slice(1, -1);
         parent.appendChild(code);
       } else {
-        // Split on newlines and insert <br> elements
+        // Split on newlines and insert <br> elements; apply bold/italic per line
         var lines = seg.split('\n');
         for (var j = 0; j < lines.length; j++) {
-          if (lines[j]) parent.appendChild(document.createTextNode(lines[j]));
+          if (lines[j]) appendFormattedLine(parent, lines[j]);
           if (j < lines.length - 1) parent.appendChild(document.createElement('br'));
         }
+      }
+    }
+  }
+
+  // Renders a single line of text with **bold** and *italic* support (no newlines).
+  function appendFormattedLine(parent, text) {
+    var parts = text.split(/(\*\*[^*]+\*\*|\*[^*\n]+\*)/g);
+    for (var i = 0; i < parts.length; i++) {
+      var p = parts[i];
+      if (p.startsWith('**') && p.endsWith('**') && p.length > 4) {
+        var strong = document.createElement('strong');
+        strong.textContent = p.slice(2, -2);
+        parent.appendChild(strong);
+      } else if (p.startsWith('*') && p.endsWith('*') && p.length > 2) {
+        var em = document.createElement('em');
+        em.textContent = p.slice(1, -1);
+        parent.appendChild(em);
+      } else {
+        if (p) parent.appendChild(document.createTextNode(p));
       }
     }
   }
