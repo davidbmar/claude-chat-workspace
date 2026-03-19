@@ -1,4 +1,4 @@
-agentB-char-count — Sprint 7
+agentA-frontend-fixes — Sprint 8
 
 Previous Sprint Summary
 ─────────────────────────────────────────
@@ -64,26 +64,25 @@ Previous Sprint Summary
 Sprint-Level Context
 
 Goal
-- Add delete button to history sidebar entries (F-011)
-- Add character count display below Claude responses (F-012 frontend)
-- Add character count to the SSE stream done event (F-012 backend)
+- Fix markdown table rendering (B-007): GFM pipe-table syntax renders as raw text
+- Fix model selection persistence (B-008): model selector resets to Sonnet on page reload
+- Fix copy button overlap on short responses (B-005): needs minimum padding-right ~56px
 
 Constraints
 - No two agents may modify the same files
-- Agent A owns: public/index.html
-- Agent B owns: server.js
+- Agent A owns: public/index.html (model persistence + copy button overlap fix)
+- Agent B owns: public/index.html table renderer — NOTE: agents must coordinate; agentA commits first, agentB must git pull before editing
 
 
 Objective
-- Include character count in the SSE done event and expose response stats
+- Fix model selector persistence across page reloads and fix copy button overlap on short responses
 
 Tasks
-- Open server.js and read it fully before making changes
-- In the /api/chat route handler, after the streaming loop completes and `assistantText` is populated, modify the done event to include the character count: instead of `res.write(\`data: ${JSON.stringify({ done: true })}\n\n\`)`, send `res.write(\`data: ${JSON.stringify({ done: true, chars: assistantText.length })}\n\n\`)`.
-- Also add the word count: `words: assistantText.split(/\s+/).filter(Boolean).length` to the done event payload.
-- Commit with: feat: include char and word count in SSE done event (F-012 backend)
+- Edit public/index.html: in the model selector change event handler, add localStorage.setItem('selectedModel', this.value)
+- Edit public/index.html: on page load after DOMContentLoaded, read localStorage.getItem('selectedModel') and if truthy set document.getElementById('model-selector').value to the saved value
+- Edit public/index.html: in the .msg.claude CSS rule add padding-right: 56px so the Copy button does not overlap text on short bubbles
+- Commit with: fix: persist model selection in localStorage, fix copy button overlap (B-005, B-008)
 
 Acceptance Criteria
-- The SSE done event includes `chars: N` where N is the length of the assistant response text
-- The SSE done event includes `words: N` where N is the approximate word count
-- All existing functionality (streaming tokens, error handling) unchanged
+- Selecting Haiku and reloading the page keeps Haiku selected
+- Copy button does not visually overlap message text on short Claude responses
