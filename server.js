@@ -39,6 +39,22 @@ async function* streamResponse(messages, model) {
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
+app.get('/api/conversations', (_req, res) => {
+  res.json({ ids: [...conversations.keys()] });
+});
+
+app.get('/api/conversations/:id', (req, res) => {
+  const history = conversations.get(req.params.id);
+  if (!history) return res.status(404).json({ error: 'not found' });
+  res.json({ messages: history });
+});
+
+app.delete('/api/conversations/:id', (req, res) => {
+  if (!conversations.has(req.params.id)) return res.status(404).json({ error: 'not found' });
+  conversations.delete(req.params.id);
+  res.json({ ok: true });
+});
+
 app.post('/api/chat', async (req, res) => {
   const { message, conversationId, model } = req.body;
   if (!message || !conversationId) {
