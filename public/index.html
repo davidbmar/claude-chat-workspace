@@ -369,6 +369,7 @@
   var sidebar = document.getElementById('sidebar');
   var sidebarOverlay = document.getElementById('sidebar-overlay');
   var sidebarCloseBtn = document.getElementById('sidebar-close-btn');
+  var scrollBtn = document.getElementById('scroll-btn');
 
   // --- localStorage history helpers ---
   var HISTORY_KEY = 'chat-history';
@@ -547,7 +548,7 @@
 
   // New Chat: generate a fresh conversation ID and reset the thread
   newChatBtn.addEventListener('click', function () {
-    if (thread.querySelector('.msg') && !confirm('Start a new chat? Your current conversation is saved in history.')) {
+    if (thread.querySelector('.msg.user') && !confirm('Start a new chat? Your current conversation is saved in history.')) {
       return;
     }
     conversationId = crypto.randomUUID();
@@ -597,6 +598,30 @@
   // Overlay click dismisses sidebar
   sidebarOverlay.addEventListener('click', closeSidebar);
 
+  // B-019: Scroll-to-bottom button — show when scrolled up, hide when at bottom
+  function updateScrollBtn() {
+    if (thread.scrollHeight - thread.scrollTop - thread.clientHeight > 100) {
+      scrollBtn.classList.add('visible');
+    } else {
+      scrollBtn.classList.remove('visible');
+    }
+  }
+  thread.addEventListener('scroll', updateScrollBtn);
+  scrollBtn.addEventListener('click', function () {
+    thread.scrollTop = thread.scrollHeight;
+    scrollBtn.classList.remove('visible');
+  });
+
+
+  // B-022: Mobile placeholder — shorten at ≤600px
+  function updatePlaceholder() {
+    input.placeholder = window.innerWidth <= 600
+      ? 'Message Claude...'
+      : 'Message Claude (Enter to send, Shift+Enter for newline)';
+  }
+  updatePlaceholder();
+  window.addEventListener('resize', updatePlaceholder);
+
   // Auto-resize textarea up to max-height
   input.addEventListener('input', function () {
     input.style.height = 'auto';
@@ -605,9 +630,6 @@
 
   input.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    } else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault();
       sendMessage();
     }
@@ -686,6 +708,7 @@
 
   function scrollToBottom() {
     thread.scrollTop = thread.scrollHeight;
+    updateScrollBtn();
   }
 
   function setStreaming(active) {
@@ -804,6 +827,7 @@
           }
           if (parsed.done && parsed.chars !== undefined) {
             claudeBubble.dataset.charcount = parsed.chars;
+            if (parsed.words !== undefined) claudeBubble.dataset.wordcount = parsed.words;
           }
         }
       }
@@ -837,7 +861,9 @@
     if (claudeBubble.dataset.charcount) {
       var charLabel = document.createElement('div');
       charLabel.className = 'char-count';
-      charLabel.textContent = claudeBubble.dataset.charcount + ' chars';
+      var statsText = claudeBubble.dataset.charcount + ' chars';
+      if (claudeBubble.dataset.wordcount) statsText += ' \u00B7 ' + claudeBubble.dataset.wordcount + ' words';
+      charLabel.textContent = statsText;
       claudeBubble.closest('.msg').appendChild(charLabel);
     }
     scrollToBottom();
