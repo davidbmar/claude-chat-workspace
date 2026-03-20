@@ -21,6 +21,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+// F-020: Configurable tool-chat module — env vars with sensible defaults
+const TOOL_NAME = process.env.TOOL_NAME || 'Claude Chat';
+const TOOL_ICON = process.env.TOOL_ICON || '💬';
+const TOOL_DESCRIPTION = process.env.TOOL_DESCRIPTION || 'Chat with Claude';
+const TOOL_COLOR = process.env.TOOL_COLOR || '#7c3aed';
+
 // Per-session conversation history: Map<conversationId, [{role, content}]>
 // Resets on server restart — intentional for a lightweight chat session model.
 const conversations = new Map();
@@ -49,6 +55,11 @@ async function* streamResponse(messages, model) {
 }
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
+
+// F-020: Returns tool metadata — SYSTEM_PROMPT is intentionally excluded (server-side only)
+app.get('/api/config', (_req, res) => {
+  res.json({ toolName: TOOL_NAME, toolIcon: TOOL_ICON, toolDescription: TOOL_DESCRIPTION, toolColor: TOOL_COLOR });
+});
 
 app.get('/api/stats', (_req, res) => {
   const totalMessages = [...conversations.values()].reduce((sum, h) => sum + h.length, 0);
