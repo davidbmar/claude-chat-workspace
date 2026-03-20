@@ -1,11 +1,39 @@
-# Sprint 13 — Agent Notes
+# Sprint 14 — Agent Notes
 
-*Started: 2026-03-20 01:34 UTC*
+*Started: 2026-03-20 01:49 UTC*
 
 Phase 1 Agents: 1
-- agentA-ui-polish
+- agentA-rendering-fixes
 
 Phase 2 Agents: 0
 (none)
 
 Automated summaries from each agent are appended below as they complete.
+
+---
+
+## agentA-rendering-fixes
+
+*Completed: 2026-03-20 01:52 UTC*
+
+**Files changed**
+- `public/index.html` — three bug fixes in the JS section
+- `docs/project-memory/sessions/S-2026-03-20-0149-rendering-fixes-sprint14.md` — session doc
+
+**Commands run**
+- `git fetch/pull` (no remote branch existed yet)
+- `node -e "..."` — HTML readability check ✓
+- `npm audit --audit-level=high` — 0 vulnerabilities ✓
+- `git add`, `git commit`, `git push -u origin HEAD`
+
+**What was implemented**
+
+| Bug | Fix |
+|-----|-----|
+| B-029 | `processTextLines` now uses `pendingListClose` + `consecutiveBlanks` to defer list closure on blank lines; two consecutive blanks or a structural element force-close |
+| B-030 | History entry click handler calls `closeSidebar()` when `window.innerWidth <= 600` |
+| B-031 | `userBubble.textContent = text` → `appendInlineSegmentsSingleLine(userBubble, text)` |
+
+**Notes / follow-on**
+- B-031 uses `appendInlineSegmentsSingleLine` (single-line inline only, per brief). Multi-line user messages keep their visual newlines via `white-space: pre-wrap` on the bubble CSS. If full multi-line markdown is desired for user bubbles in a future sprint, switching to `appendInlineSegments` would add `<br>` support.
+
