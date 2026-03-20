@@ -1,9 +1,9 @@
-# Sprint 17 — Agent Notes
+# Sprint 18 — Agent Notes
 
-*Started: 2026-03-20 02:47 UTC*
+*Started: 2026-03-20 03:12 UTC*
 
 Phase 1 Agents: 1
-- agentA-accessibility-and-rendering
+- agentA-list-and-a11y
 
 Phase 2 Agents: 0
 (none)
@@ -12,27 +12,24 @@ Automated summaries from each agent are appended below as they complete.
 
 ---
 
-## agentA-accessibility-and-rendering
+## agentA-list-and-a11y
 
-*Completed: 2026-03-20 02:50 UTC*
+*Completed: 2026-03-20 03:15 UTC*
 
-**Files changed:**
-- `public/index.html` — all 6 tasks implemented
-- `docs/project-memory/sessions/S-2026-03-20-0248-accessibility-and-rendering.md` — session doc created
+**Files changed:** `public/index.html`, `docs/project-memory/sessions/S-2026-03-20-0314-list-and-a11y.md`
 
 **Commands run:**
-- `git pull` (no remote tracking — branch is new)
-- `node -e "require('fs')..."` — HTML readability check
-- `npm audit --audit-level=high` — 0 vulnerabilities
-- `git add`, `git commit`, `git push -u origin HEAD`
+- `git pull origin main`
+- `node -e "require('fs').readFileSync(...)"` — HTML readable ✓
+- `npm audit --audit-level=high` — 0 vulnerabilities ✓
+- `git add ... && git commit ...`
+- `git push -u origin HEAD`
 
-**Changes summary:**
-| Task | What was done |
-|------|--------------|
-| B-036 | Blockquote CSS + `processTextLines` detects `> ` lines, groups into `<blockquote>` with inline rendering |
-| B-037 | `renderTextInto` extracts language from fenced code, sets `data-language` on `<pre>`, adds `.code-lang-badge` span, adds `language-*` class on `<code>` |
-| B-038 | `showConfirmModal` adds Escape keydown + backdrop click listeners; both removed on close |
-| B-040 | `aria-label` added to `#send-btn`, `#hamburger-btn`, `#scroll-btn`, `#sidebar-close-btn` (HTML); `.delete-btn` gets `aria-label` via JS in `renderHistoryList` |
-| B-041 | `addMsg` skips the "Claude" label element when `isError` is true |
-| B-044 | Already implemented (`background:rgba(0,0,0,0.5)` + `display:flex` on show) — confirmed, no change needed |
+**Notes:**
+
+- **B-046**: The JS renderer already produced `<ul><li>` from `- ` lines. The only fix needed was CSS — added `list-style: disc; padding: 0` to `.bubble ul`.
+- **B-047**: `hr` border was near-invisible `var(--border)` (#2e3347 against dark bg). Now `rgba(255,255,255,0.15)` gives a subtle but visible rule.
+- **B-045**: Headings now use `rem` units (anchored to root, not bubble font-size) with H1=700 weight, H2=muted color, H3=uppercase small-caps treatment.
+- **B-049**: `aria-label` added to both the static HTML `#new-chat-btn` and the dynamically-created `.copy-btn` in JS.
+- **B-043+B-048**: History entries are now tab-reachable (`tabindex="0"`, `role="button"`) with Enter/Space loading the conversation. Delete `×` buttons have `tabindex="-1"` — still mouse-clickable but removed from tab sequence.
 
