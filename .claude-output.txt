@@ -1,18 +1,23 @@
 ---
 
-**Files changed:** `public/index.html`, `docs/project-memory/sessions/S-2026-03-20-0314-list-and-a11y.md`
+**Files changed**
+- `public/index.html` — all 5 tasks
 
-**Commands run:**
-- `git pull origin main`
-- `node -e "require('fs').readFileSync(...)"` — HTML readable ✓
+**Commands run**
+- `node -e "require('fs')..."` — HTML readable check ✓
 - `npm audit --audit-level=high` — 0 vulnerabilities ✓
-- `git add ... && git commit ...`
-- `git push -u origin HEAD`
+- `git commit` + `git push -u origin HEAD`
 
-**Notes:**
+**What was implemented**
 
-- **B-046**: The JS renderer already produced `<ul><li>` from `- ` lines. The only fix needed was CSS — added `list-style: disc; padding: 0` to `.bubble ul`.
-- **B-047**: `hr` border was near-invisible `var(--border)` (#2e3347 against dark bg). Now `rgba(255,255,255,0.15)` gives a subtle but visible rule.
-- **B-045**: Headings now use `rem` units (anchored to root, not bubble font-size) with H1=700 weight, H2=muted color, H3=uppercase small-caps treatment.
-- **B-049**: `aria-label` added to both the static HTML `#new-chat-btn` and the dynamically-created `.copy-btn` in JS.
-- **B-043+B-048**: History entries are now tab-reachable (`tabindex="0"`, `role="button"`) with Enter/Space loading the conversation. Delete `×` buttons have `tabindex="-1"` — still mouse-clickable but removed from tab sequence.
+| Task | Change |
+|------|--------|
+| B-046 | Regex normalization of `•` and lone `*` → `-` at top of parse loop (lines added before blockquote check) |
+| B-050 | Added `lastLi`/`currentNestedList` state; `/^  - /` lines create nested `<ul>` inside the last top-level `<li>`; `currentNestedList` resets on each new top-level bullet |
+| B-047 | HR `rgba(255,255,255,0.15)` → `0.3` |
+| B-051 | `role="dialog"`, `aria-modal="true"`, `aria-labelledby="confirm-modal-title"` on modal; `id` on `<p>`; `aria-label` on both buttons |
+| B-052 | `aria-label="Select AI model"` on `<select>` |
+
+**Notes**
+- Nested list support is one level only (2-space indent), per brief constraint.
+- `* ` bullet normalization uses a negative lookahead `\*(?!\*)` so `**bold**` inline syntax is unaffected.
