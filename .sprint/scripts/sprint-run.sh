@@ -574,6 +574,34 @@ generate_planning_context() {
 }
 
 # ---------------------------------------------------------------------------
+# Cleanup trap — always rebuild dashboard data on exit (F-012)
+# ---------------------------------------------------------------------------
+
+cleanup_and_rebuild() {
+  local exit_code=$?
+  # (1) Kill any remaining agent tmux sessions
+  tmux kill-session -t "${PROJECT_SLUG}-sprint${SPRINT_NUM}p1" 2>/dev/null || true
+  tmux kill-session -t "${PROJECT_SLUG}-sprint${SPRINT_NUM}p2" 2>/dev/null || true
+  # Legacy session names (no project prefix) — clean up if they exist
+  tmux kill-session -t "sprint${SPRINT_NUM}p1" 2>/dev/null || true
+  tmux kill-session -t "sprint${SPRINT_NUM}p2" 2>/dev/null || true
+
+  # (2) Rebuild dashboard data if the build script exists
+  local build_script="${SCRIPT_DIR}/../scripts/build-sprint-data.sh"
+  if [ ! -f "$build_script" ]; then
+    build_script="${ROOT}/.sprint/scripts/build-sprint-data.sh"
+  fi
+  if [ -f "$build_script" ]; then
+    bash "$build_script" 2>/dev/null || true
+    echo "[$(date -u '+%H:%M:%S')] Dashboard data rebuilt"
+  fi
+
+  return $exit_code
+}
+
+trap cleanup_and_rebuild EXIT
+
+# ---------------------------------------------------------------------------
 # Main execution
 # ---------------------------------------------------------------------------
 
@@ -636,6 +664,33 @@ if ! $SKIP_VALIDATE && ! $CONTINUE_MODE; then
   echo ""
 fi
 
+# ===== VERIFICATION COMMAND PRE-CHECK (F-011) =====
+# Before launching agents, ensure every binary referenced in Merge Verification
+# commands actually exists on PATH. Fail fast with a clear error.
+if ! $SKIP_VALIDATE && ! $CONTINUE_MODE; then
+  MISSING_CMDS=()
+  for vcmd in "${MERGE_VERIFY[@]}"; do
+    # Extract the first word (the binary) from the command
+    binary=$(echo "$vcmd" | awk '{print $1}')
+    if ! command -v "$binary" >/dev/null 2>&1; then
+      MISSING_CMDS+=("$binary (from: $vcmd)")
+    fi
+  done
+  if [ ${#MISSING_CMDS[@]} -gt 0 ]; then
+    echo ""
+    echo "=== VERIFICATION COMMAND PRE-CHECK FAILED ==="
+    echo "The following binaries are not on PATH:"
+    for mc in "${MISSING_CMDS[@]}"; do
+      echo "  - $mc"
+    done
+    echo ""
+    echo "Install the missing commands or update Merge Verification in SPRINT_BRIEF.md."
+    exit 1
+  fi
+  log "Verification command pre-check passed (${#MERGE_VERIFY[@]} commands)."
+  echo ""
+fi
+
 # ===== PHASE 1 =====
 if [ -z "$RUN_PHASE" ] || [ "$RUN_PHASE" = "1" ]; then
   if [ ${#PHASE1_AGENTS[@]} -gt 0 ]; then
@@ -681,7 +736,7 @@ EOF
         log "All Phase 1 agents already have commits — skipping launch."
       else
         P1_AGENTS_START=$(now_s)
-        launch_agents_tmux "sprint${SPRINT_NUM}p1" "${PHASE1_AGENTS[@]}"
+        launch_agents_tmux "${PROJECT_SLUG}-sprint${SPRINT_NUM}p1" "${PHASE1_AGENTS[@]}"
 
         # Poll for completion
         wait_for_agents "Phase 1" "${PHASE1_AGENTS[@]}"
@@ -754,7 +809,7 @@ if [ -z "$RUN_PHASE" ] || [ "$RUN_PHASE" = "2" ]; then
         log "All Phase 2 agents already have commits — skipping launch."
       else
         P2_AGENTS_START=$(now_s)
-        launch_agents_tmux "sprint${SPRINT_NUM}p2" "${PHASE2_AGENTS[@]}"
+        launch_agents_tmux "${PROJECT_SLUG}-sprint${SPRINT_NUM}p2" "${PHASE2_AGENTS[@]}"
 
         # Poll for completion
         wait_for_agents "Phase 2" "${PHASE2_AGENTS[@]}"
