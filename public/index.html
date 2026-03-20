@@ -256,6 +256,66 @@
     #scroll-btn:hover { opacity: 0.85; }
     #scroll-btn.visible { display: flex; }
 
+    /* Generated Files panel — Sprint 22 Milestone B.1 */
+    .generated-files-panel {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin: 8px 20px;
+      background: var(--claude-bubble);
+      flex-shrink: 0;
+    }
+    .generated-files-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+      font-variant: small-caps;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .files-count {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-variant: normal;
+      font-weight: normal;
+    }
+    .files-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .file-name {
+      flex: 1;
+      font-family: 'Menlo', 'Consolas', monospace;
+      font-size: 12px;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .file-download-btn {
+      flex-shrink: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-muted);
+      font-size: 11px;
+      padding: 2px 8px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .file-download-btn:hover { color: var(--text); border-color: var(--accent); }
+
     /* Sidebar overlay — covers content area on mobile when sidebar is open */
     #sidebar-overlay {
       display: none;
@@ -366,6 +426,13 @@
     </div>
 
     <button id="scroll-btn" title="Scroll to bottom" aria-label="Scroll to bottom">&#8595;</button>
+    <div id="generated-files-panel" class="generated-files-panel" style="display:none">
+      <div class="generated-files-header">
+        <span>&#x1F4C1; Generated Files</span>
+        <span id="generated-files-count" class="files-count"></span>
+      </div>
+      <ul id="generated-files-list" class="files-list"></ul>
+    </div>
     <div id="input-area">
       <textarea id="msg-input" rows="1" placeholder="Message Claude (Enter or Cmd+Enter to send, Shift+Enter for newline)"></textarea>
       <button id="send-btn" title="Send" aria-label="Send message">&#9658;</button>
@@ -376,6 +443,39 @@
 <script>
 (function () {
   'use strict';
+
+  // Minimal XSS-safe HTML escaper for user-controlled strings rendered via innerHTML
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // Sprint 22 B.1: Show a file entry in the Generated Files panel
+  function addGeneratedFile(name, conversationId) {
+    var panel = document.getElementById('generated-files-panel');
+    var list = document.getElementById('generated-files-list');
+    // Deduplicate: skip if already shown
+    if (list.querySelector('[data-filename="' + CSS.escape(name) + '"]')) return;
+    panel.style.display = '';
+    var li = document.createElement('li');
+    li.className = 'file-item';
+    li.dataset.filename = name;
+    li.innerHTML = '<span class="file-name">' + escapeHtml(name) + '</span>' +
+      '<a class="file-download-btn" href="/api/files/' + encodeURIComponent(name) + '" download="' + escapeHtml(name) + '">Download</a>';
+    list.appendChild(li);
+    var count = list.children.length;
+    document.getElementById('generated-files-count').textContent = count + ' file' + (count !== 1 ? 's' : '');
+  }
+
+  // Sprint 22 B.1: Reset the Generated Files panel (called on new conversation / delete)
+  function clearGeneratedFilesPanel() {
+    document.getElementById('generated-files-panel').style.display = 'none';
+    document.getElementById('generated-files-list').innerHTML = '';
+    document.getElementById('generated-files-count').textContent = '';
+  }
 
   // F-020: Tool config — populated from /api/config on load; used for icons and colors
   var toolConfig = { toolName: 'Claude Chat', toolIcon: '💬', toolDescription: 'Chat with Claude', toolColor: '#7c3aed' };
@@ -566,6 +666,7 @@
     if (conversationId === id) {
       conversationId = crypto.randomUUID();
       firstMessageSent = false;
+      clearGeneratedFilesPanel();
       while (thread.firstChild) thread.removeChild(thread.firstChild);
       var es = document.createElement('div');
       es.id = 'empty-state';
@@ -589,8 +690,9 @@
     firstMessageSent = true;
     renderHistoryList();
 
-    // Clear thread
+    // Clear thread and generated files panel
     while (thread.firstChild) thread.removeChild(thread.firstChild);
+    clearGeneratedFilesPanel();
     emptyState = null;
 
     try {
@@ -701,6 +803,7 @@
     es.appendChild(p);
     thread.appendChild(es);
     emptyState = es;
+    clearGeneratedFilesPanel();
     renderHistoryList();
     input.focus();
   });
@@ -879,6 +982,7 @@
       staleConversationError = false;
       conversationId = crypto.randomUUID();
       firstMessageSent = false;
+      clearGeneratedFilesPanel();
       while (thread.firstChild) thread.removeChild(thread.firstChild);
     }
 
@@ -973,6 +1077,9 @@
           if (parsed.done && parsed.chars !== undefined) {
             claudeBubble.dataset.charcount = parsed.chars;
             if (parsed.words !== undefined) claudeBubble.dataset.wordcount = parsed.words;
+          }
+          if (parsed.files && parsed.files.length > 0) {
+            parsed.files.forEach(function(name) { addGeneratedFile(name, conversationId); });
           }
         }
       }
