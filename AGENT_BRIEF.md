@@ -1,31 +1,33 @@
-agentB-js-error-ux — Sprint 9
+agentA-mobile-and-overlay — Sprint 10
 
 Previous Sprint Summary
 ─────────────────────────────────────────
-# claude-chat-workspace Project Status — March 19, 2026 (Sprint 8: Sprint 8)
+# claude-chat-workspace Project Status — March 20, 2026 (Sprint 9: Sprint 9)
 
-## Sprint 8 Summary
+## Sprint 9 Summary
 
-- Fix markdown table rendering (B-007): GFM pipe-table syntax renders as raw text
-- Fix model selection persistence (B-008): model selector resets to Sonnet on page reload
-- Fix copy button overlap on short responses (B-005): needs minimum padding-right ~56px
+- B-009 Critical: Fix mobile sidebar — add close button + click-outside overlay so user is never trapped with sidebar open
+- B-010 High: Replace raw JSON API errors with human-readable messages
+- B-011 High: Add CSS for rendered markdown tables (borders, padding, header styling)
+- B-012 High: Fix stale history 404 UX — keep entry in sidebar, show explicit Remove button
+- B-015 Medium: Fix history delete button layout — replace float:right with flexbox
 
 ---
 
 ## What Changed
 
-### agentA-frontend-fixes
+### agentA-css-and-layout
 
-- Fix model selector persistence across page reloads and fix copy button overlap on short responses
+Completed assigned tasks.
 
 **Commits:**
 - (no commits)
 
 **Files:** no changes
 
-### agentB-table-renderer
+### agentB-js-error-ux
 
-- Add GFM markdown table rendering to the DOM-based markdown renderer in public/index.html
+Completed assigned tasks.
 
 **Commits:**
 - (no commits)
@@ -39,8 +41,8 @@ Previous Sprint Summary
 
 | # | Branch | Deliverable | Phase | Conflicts | Files Changed |
 |---|--------|-------------|-------|-----------|---------------|
-| 1 | agentA-frontend-fixes | Fix model selector persistence across page reloads and fix copy button overlap on short responses | 1 | Clean | 0 |
-| 2 | agentB-table-renderer | Add GFM markdown table rendering to the DOM-based markdown renderer in public/index.html | 1 | Clean | 0 |
+| 1 | agentA-css-and-layout | Completed tasks | 1 | Clean | 0 |
+| 2 | agentB-js-error-ux | Completed tasks | 1 | Clean | 0 |
 
 ---
 
@@ -51,15 +53,13 @@ Previous Sprint Summary
 | Agents | 2 |
 | Test files | 0 |
 | Security audit | 0 vulnerabilities |
-| Git diff |  20 files changed, 1868 insertions(+), 472 deletions(-) |
+| Git diff |  9 files changed, 442 insertions(+), 116 deletions(-) |
 
 ---
 
 ## Backlog Snapshot
 
-**Open:** 0
-0 bug(s), 0
-0 feature request(s)
+**Open:** 8 bug(s), 4 feature request(s)
 
 ### Completed This Sprint
 - B-004
@@ -75,43 +75,30 @@ Previous Sprint Summary
 Sprint-Level Context
 
 Goal
-- B-009 Critical: Fix mobile sidebar — add close button + click-outside overlay so user is never trapped with sidebar open
-- B-010 High: Replace raw JSON API errors with human-readable messages
-- B-011 High: Add CSS for rendered markdown tables (borders, padding, header styling)
-- B-012 High: Fix stale history 404 UX — keep entry in sidebar, show explicit Remove button
-- B-015 Medium: Fix history delete button layout — replace float:right with flexbox
+- B-014 Medium: Fix mobile header — stop wrapping to two rows at narrow widths (target ≤56px header height at 400px)
+- B-016 Medium: Fix copy in non-HTTPS context — add fallback for clipboard API failure with user feedback
+- F-014 Low: Add relative timestamps to history sidebar entries (e.g. "2 hours ago", "yesterday")
+- F-015 Low: Add click-outside overlay to close mobile sidebar (semi-transparent backdrop)
+- F-016 Low: Copy button should copy original markdown source, not plain text
 
 Constraints
 - No two agents may modify the same files
-- Agent A owns: public/index.html CSS section + sidebar HTML + sidebar toggle JS
-- Agent B owns: public/index.html sendMessage() error handler + loadConversation() 404 branch + model init
+- Agent A owns: public/index.html CSS section (mobile header fix, sidebar overlay CSS)
+- Agent B owns: public/index.html JS section (copy fallback, timestamps, markdown copy source)
 
 
 Objective
-Fix JavaScript UX bugs in public/index.html
+Fix mobile header layout and add sidebar click-outside overlay in public/index.html
 
 Tasks
-1. B-010 Friendly errors: In sendMessage() SSE error handling, replace raw JSON display with human-readable messages. Map known error types:
-   - authentication_error → "API key is invalid or not configured. Please contact your administrator."
-   - rate_limit_error → "Rate limit reached. Please wait a moment and try again."
-   - overloaded_error → "Claude is currently busy. Please try again in a few seconds."
-   - Network/fetch failure → "Could not reach the server. Check your connection and try again."
-   - Default → "Something went wrong. Please try again." with a small collapsed "Details" toggle showing the raw error for debugging.
+1. B-014 Mobile header: At ≤600px (or ≤400px via media query), prevent header from wrapping. Options:
+   - Move model selector out of the header into the main area (below thread, above input), OR
+   - Collapse model selector to an icon button on mobile that opens a small dropdown, OR
+   - Keep header single-row by reducing font sizes and padding so everything fits at 400px
+   Pick the simplest approach that keeps header ≤56px tall on mobile.
 
-2. B-012 Stale 404 UX: In loadConversation(), when response is 404, do NOT immediately remove from localStorage. Instead: show error bubble "This conversation is no longer available (server was restarted)." with a "Remove from history" button. When that button is clicked, remove from localStorage and re-render the list. Until then, keep the entry in the sidebar.
-
-3. B-013 Stale model guard: After setting modelSelector.value = savedModel, validate: if (modelSelector.value !== savedModel) { localStorage.removeItem('selectedModel'); } to clear stale IDs that don't match any option.
+2. F-015 Sidebar overlay: Add a `#sidebar-overlay` div (if not already present from Sprint 9) — `position: fixed; inset: 0; z-index: 99; background: rgba(0,0,0,0.4); display: none`. When sidebar opens, show it. When user clicks the overlay, close the sidebar. This gives mobile users an intuitive tap-outside-to-close gesture.
 
 Acceptance Criteria
-- A 401 API response shows "API key is invalid or not configured" not raw JSON
-- Clicking a 404 history entry shows error bubble with "Remove from history" button; entry stays in sidebar
-- Stale localStorage model IDs are cleared, not silently mismatched
-
-## Merge Order
-1. agentA-css-and-layout
-2. agentB-js-error-ux
-
-## Merge Verification
-- node -e "require('fs').readFileSync('public/index.html','utf8'); console.log('HTML readable')"
-- docker compose up --build -d && sleep 5 && curl -s http://localhost:8080/api/health
-- npm audit --audit-level=high
+- Header is single-row (≤56px) at 400px viewport width
+- Tapping anywhere outside the open sidebar closes it on mobile
