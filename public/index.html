@@ -308,6 +308,15 @@
 </head>
 <body>
 <div id="sidebar-overlay"></div>
+<div id="confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:200">
+  <div style="background:#1e2235;border-radius:12px;padding:24px;max-width:360px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
+    <p style="color:#e2e8f0;margin:0 0 20px;font-size:0.95rem">Start a new chat? Your current conversation will remain in history.</p>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button id="confirm-cancel-btn" style="background:#2e3347;color:#e2e8f0;border:1px solid #4a5568;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:0.9rem">Cancel</button>
+      <button id="confirm-ok-btn" style="background:#e53e3e;color:white;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:0.9rem">New Chat</button>
+    </div>
+  </div>
+</div>
 <div id="app">
   <div id="sidebar">
     <button id="sidebar-close-btn" title="Close sidebar">&times;</button>
@@ -370,6 +379,27 @@
   var sidebarOverlay = document.getElementById('sidebar-overlay');
   var sidebarCloseBtn = document.getElementById('sidebar-close-btn');
   var scrollBtn = document.getElementById('scroll-btn');
+  var confirmModal = document.getElementById('confirm-modal');
+  var confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+  var confirmOkBtn = document.getElementById('confirm-ok-btn');
+
+  function showConfirmModal() {
+    return new Promise(function (resolve) {
+      confirmModal.style.display = 'flex';
+      function onOk() {
+        confirmModal.style.display = 'none';
+        confirmCancelBtn.removeEventListener('click', onCancel);
+        resolve(true);
+      }
+      function onCancel() {
+        confirmModal.style.display = 'none';
+        confirmOkBtn.removeEventListener('click', onOk);
+        resolve(false);
+      }
+      confirmOkBtn.addEventListener('click', onOk, { once: true });
+      confirmCancelBtn.addEventListener('click', onCancel, { once: true });
+    });
+  }
 
   // --- localStorage history helpers ---
   var HISTORY_KEY = 'chat-history';
@@ -486,7 +516,7 @@
         errBubble.textContent = 'This conversation is no longer available (server was restarted).';
         var removeBtn = document.createElement('button');
         removeBtn.textContent = 'Remove from history';
-        removeBtn.style.cssText = 'display:block;margin-top:8px;padding:4px 10px;cursor:pointer;';
+        removeBtn.style.cssText = 'display:block;margin-top:8px;padding:4px 10px;cursor:pointer;background:#2e3347;color:#e2e8f0;border:1px solid #4a5568;border-radius:6px;';
         removeBtn.addEventListener('click', function () {
           var filtered = getHistory().filter(function (h) { return h.id !== id; });
           saveHistory(filtered);
@@ -508,6 +538,15 @@
           var mdText = typeof m.content === 'string' ? m.content : (m.content[0] && m.content[0].text) || '';
           renderTextInto(bubble, mdText);
           bubble.dataset.markdown = mdText;
+          // B-025: compute and show stats for history-loaded Claude messages
+          var chars = mdText.length;
+          var wc = mdText.trim().split(/\s+/).filter(Boolean).length;
+          bubble.dataset.charcount = chars;
+          bubble.dataset.wordcount = wc;
+          var histStatsLabel = document.createElement('div');
+          histStatsLabel.className = 'char-count';
+          histStatsLabel.textContent = chars + ' chars \u00B7 ' + wc + (wc === 1 ? ' word' : ' words');
+          bubble.closest('.msg').appendChild(histStatsLabel);
         }
       });
     } catch (err) {
@@ -547,9 +586,10 @@
   });
 
   // New Chat: generate a fresh conversation ID and reset the thread
-  newChatBtn.addEventListener('click', function () {
-    if (thread.querySelector('.msg.user') && !confirm('Start a new chat? Your current conversation is saved in history.')) {
-      return;
+  newChatBtn.addEventListener('click', async function () {
+    if (thread.querySelector('.msg.user')) {
+      var confirmed = await showConfirmModal();
+      if (!confirmed) return;
     }
     conversationId = crypto.randomUUID();
     firstMessageSent = false;
@@ -862,7 +902,7 @@
       var charLabel = document.createElement('div');
       charLabel.className = 'char-count';
       var statsText = claudeBubble.dataset.charcount + ' chars';
-      if (claudeBubble.dataset.wordcount) statsText += ' \u00B7 ' + claudeBubble.dataset.wordcount + ' words';
+      if (claudeBubble.dataset.wordcount) { var wc = parseInt(claudeBubble.dataset.wordcount, 10); statsText += ' \u00B7 ' + wc + (wc === 1 ? ' word' : ' words'); }
       charLabel.textContent = statsText;
       claudeBubble.closest('.msg').appendChild(charLabel);
     }
@@ -968,7 +1008,7 @@
         var headerRow = document.createElement('tr');
         for (var h = 0; h < headerCells.length; h++) {
           var th = document.createElement('th');
-          th.textContent = headerCells[h];
+          appendInlineSegmentsSingleLine(th, headerCells[h]);
           headerRow.appendChild(th);
         }
         thead.appendChild(headerRow);
@@ -980,7 +1020,7 @@
           var tr = document.createElement('tr');
           for (var c = 0; c < cells.length; c++) {
             var td = document.createElement('td');
-            td.textContent = cells[c];
+            appendInlineSegmentsSingleLine(td, cells[c]);
             tr.appendChild(td);
           }
           tbody.appendChild(tr);
