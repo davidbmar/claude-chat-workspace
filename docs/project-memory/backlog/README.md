@@ -104,6 +104,7 @@ What should happen?
 | B-051 | Confirm modal missing ARIA dialog semantics | role="dialog", aria-modal, aria-labelledby, button labels all added. | medium | Done (Sprint 19) |
 | B-052 | Model selector has no accessible label | aria-label="Select AI model" added. | medium | Done (Sprint 19) |
 | B-053 | History entry accessible name lacks timestamp | title attr contains first message only — two "Hello" convos indistinguishable by screen reader. Add timestamp to aria-label. | low | Open |
-| B-054 | User bubbles only render inline markdown — block elements show raw | Headings, fenced code, lists, blockquote, table, HR all appear as raw markdown in user message bubbles. Inline (bold/italic/code) works. | medium | Open |
-| B-055 | Mobile header wraps to two lines at 375px | At narrow widths, "Claude Chat" title wraps — pushes header taller, reduces thread space. Need to truncate title or hide New Chat button text on mobile. | low | Open |
-| B-056 | Mobile input area clips at bottom of viewport | Textarea bottom bleeds slightly below safe area at 375px — "Claude" portion of placeholder hidden. | low | Open |
+| B-054 | User bubbles only render inline markdown — block elements show raw | Headings, fenced code, lists, blockquote, table, HR all appear as raw markdown in user message bubbles. Inline (bold/italic/code) works. | medium | Done (Sprint 20) |
+| B-055 | Mobile header wraps to two lines at 375px | At narrow widths, "Claude Chat" title wraps — pushes header taller, reduces thread space. Need to truncate title or hide New Chat button text on mobile. | low | Done (Sprint 20) |
+| B-056 | Mobile input area clips at bottom of viewport | Textarea bottom bleeds slightly below safe area at 375px — "Claude" portion of placeholder hidden. | low | Done (Sprint 20) |
+| B-057 | Mobile header subtitle wraps to 3 lines at 375px | "Chat with Claude" subtitle wraps to 2-3 lines at narrow widths making header excessively tall. Should be hidden (display:none) at ≤480px breakpoint — the icon+title alone is sufficient. | medium | Open |
