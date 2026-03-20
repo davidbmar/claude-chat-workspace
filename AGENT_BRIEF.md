@@ -1,39 +1,36 @@
-agentB-table-renderer — Sprint 8
+agentA-css-and-layout — Sprint 9
 
 Previous Sprint Summary
 ─────────────────────────────────────────
-# claude-chat-workspace Project Status — March 19, 2026 (Sprint 1: Sprint 1)
+# claude-chat-workspace Project Status — March 19, 2026 (Sprint 8: Sprint 8)
 
-## Sprint 1 Summary
+## Sprint 8 Summary
 
-- Copy the v1 claude-chat-workspace implementation from ~/src/everyone-ai into this standalone repo
-- Add Docker Compose for local development and .env.example for configuration
-- Add UX polish: new chat button, copy message to clipboard, model selector in header
-- Make server.js read SYSTEM_PROMPT and CLAUDE_MODEL from environment variables
+- Fix markdown table rendering (B-007): GFM pipe-table syntax renders as raw text
+- Fix model selection persistence (B-008): model selector resets to Sonnet on page reload
+- Fix copy button overlap on short responses (B-005): needs minimum padding-right ~56px
 
 ---
 
 ## What Changed
 
-### agentA-standalone-setup
+### agentA-frontend-fixes
 
-- Bring the v1 server code into this repo and wire up local dev tooling with environment variable config
-
-**Commits:**
-- agentA-standalone-setup: implement sprint 1 tasks
-- feat: standalone setup — copy v1 code, Docker Compose, env config
-
-**Files:**  11 files changed, 340 insertions(+)
-
-### agentB-ux-polish
-
-- Add new chat button, per-message copy button, and model selector to the chat UI
+- Fix model selector persistence across page reloads and fix copy button overlap on short responses
 
 **Commits:**
-- agentB-ux-polish: implement sprint 1 tasks
-- feat: UX polish — new chat button, model selector, copy message button
+- (no commits)
 
-**Files:**  3 files changed, 520 insertions(+)
+**Files:** no changes
+
+### agentB-table-renderer
+
+- Add GFM markdown table rendering to the DOM-based markdown renderer in public/index.html
+
+**Commits:**
+- (no commits)
+
+**Files:** no changes
 
 
 ---
@@ -42,8 +39,8 @@ Previous Sprint Summary
 
 | # | Branch | Deliverable | Phase | Conflicts | Files Changed |
 |---|--------|-------------|-------|-----------|---------------|
-| 1 | agentA-standalone-setup | Bring the v1 server code into this repo and wire up local dev tooling with environment variable config | 1 | Clean | 11 |
-| 2 | agentB-ux-polish | Add new chat button, per-message copy button, and model selector to the chat UI | 1 | Ephemeral only | 3 |
+| 1 | agentA-frontend-fixes | Fix model selector persistence across page reloads and fix copy button overlap on short responses | 1 | Clean | 0 |
+| 2 | agentB-table-renderer | Add GFM markdown table rendering to the DOM-based markdown renderer in public/index.html | 1 | Clean | 0 |
 
 ---
 
@@ -53,6 +50,20 @@ Previous Sprint Summary
 |--------|-------|
 | Agents | 2 |
 | Test files | 0 |
+| Security audit | 0 vulnerabilities |
+| Git diff |  20 files changed, 1868 insertions(+), 472 deletions(-) |
+
+---
+
+## Backlog Snapshot
+
+**Open:** 0
+0 bug(s), 0
+0 feature request(s)
+
+### Completed This Sprint
+- B-004
+- B-006
 
 ---
 
@@ -64,27 +75,35 @@ Previous Sprint Summary
 Sprint-Level Context
 
 Goal
-- Fix markdown table rendering (B-007): GFM pipe-table syntax renders as raw text
-- Fix model selection persistence (B-008): model selector resets to Sonnet on page reload
-- Fix copy button overlap on short responses (B-005): needs minimum padding-right ~56px
+- B-009 Critical: Fix mobile sidebar — add close button + click-outside overlay so user is never trapped with sidebar open
+- B-010 High: Replace raw JSON API errors with human-readable messages
+- B-011 High: Add CSS for rendered markdown tables (borders, padding, header styling)
+- B-012 High: Fix stale history 404 UX — keep entry in sidebar, show explicit Remove button
+- B-015 Medium: Fix history delete button layout — replace float:right with flexbox
 
 Constraints
 - No two agents may modify the same files
-- Agent A owns: public/index.html (model persistence + copy button overlap fix)
-- Agent B owns: public/index.html table renderer — NOTE: agents must coordinate; agentA commits first, agentB must git pull before editing
+- Agent A owns: public/index.html CSS section + sidebar HTML + sidebar toggle JS
+- Agent B owns: public/index.html sendMessage() error handler + loadConversation() 404 branch + model init
 
 
 Objective
-- Add GFM markdown table rendering to the DOM-based markdown renderer in public/index.html
+Fix CSS and layout bugs in public/index.html
 
 Tasks
-- Read public/index.html and understand the existing renderTextInto() DOM-based markdown renderer
-- Add table block detection: a contiguous group of lines where line 0 matches /^\|.+\|$/ and line 1 matches /^\|[-| :]+\|$/ — this is a GFM table
-- Parse header cells from line 0, skip line 1 (separator), parse data rows from remaining lines
-- Build table as DOM elements using createElement only (no innerHTML): table > thead > tr > th for headers, tbody > tr > td for data rows; set cell text via textContent
-- Insert the table as a block-level element alongside existing code blocks and paragraph text
-- Commit with: feat: GFM table rendering in DOM markdown renderer (B-007)
+1. B-009 Mobile sidebar close: Add a close button (`×`) inside `.sidebar` at the top. Add a `#sidebar-overlay` div (`position:fixed; inset:0; z-index:99; background:rgba(0,0,0,0.4); display:none`) that shows when sidebar opens and dismisses sidebar when clicked. Update hamburger JS to also toggle overlay visibility. The sidebar itself should be z-index:100.
+
+2. B-011 Table CSS: Add to the `<style>` block:
+```
+.bubble table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+.bubble th, .bubble td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; font-size: 0.9em; }
+.bubble th { background: rgba(255,255,255,0.06); font-weight: 600; }
+.bubble tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+```
+
+3. B-015 History entry flexbox: Change `.history-entry` to `display:flex; align-items:center; gap:6px`. Give the title `flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap`. Make delete button `flex-shrink:0`. Remove any `float:right` from the delete button.
 
 Acceptance Criteria
-- A markdown table renders as an HTML table element, not raw pipe-delimited text
-- Existing rendering (headings, bold, italic, code blocks, lists) still works correctly
+- On mobile (~400px), sidebar can be closed via × button or tapping the overlay
+- A markdown table from Claude renders with visible borders and padding
+- History entry × button sits right-aligned without overlapping the title text

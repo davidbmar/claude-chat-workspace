@@ -1,18 +1,20 @@
-Done. Here's the summary:
-
 ---
 
-**Files changed**
-- `public/index.html` — added `parseTableCells()` helper function and GFM table block detection inside `processTextLines()`
-- `docs/project-memory/sessions/S-2026-03-19-2149-table-renderer.md` — session doc
+**Files changed:**
+- `public/index.html` — all three bug fixes applied
 
-**Commands run**
-- `git fetch origin` — checked for agentA's branch (not on remote yet; agentA and agentB edits are in different areas of the file, so no conflict risk)
-- Node.js syntax validation — script block parsed cleanly
-- `git commit` + `git push -u origin HEAD`
+**Commands run:**
+- `git pull` (no tracking branch; no-op)
+- `node -e` syntax check — passed
+- `git add` + `git commit`
+- `git push -u origin HEAD`
 
-**Implementation details**
-The table detector checks two conditions before collecting lines: the current line must match `/^\|.+\|$/` and the _next_ line must match `/^\|[-| :]+\|$/` (separator row). This two-line lookahead prevents false positives from single pipe-containing lines. Table lines are consumed via inner while-loop with `i--` before `continue` to counteract the outer for-loop increment. All cell text is set via `textContent` — no `innerHTML` anywhere, consistent with the renderer's XSS-safe design.
+**Changes summary:**
 
-**Follow-on work**
-- AgentA's changes to `public/index.html` (model persistence, copy button overlap) will need a clean merge against this branch — the modified regions don't overlap, so it should be conflict-free.
+| Ticket | Change |
+|--------|--------|
+| B-009 | Added `#sidebar-overlay` div + `#sidebar-close-btn` (×) to HTML; CSS for overlay (z-index:99) and close button; `openSidebar()`/`closeSidebar()` JS helpers; hamburger, close btn, and overlay click all call these helpers |
+| B-011 | Added 4 CSS rules for `.bubble table/th/td/tr:nth-child(even) td` — borders, padding, header background, alternating rows |
+| B-015 | Changed `.history-entry` to `display:flex; align-items:center; gap:6px`; added `.history-entry-title` (flex:1 + ellipsis); `.delete-btn` changed from `float:right` to `flex-shrink:0`; `renderHistoryList()` wraps title in `<span class="history-entry-title">` |
+
+**Notes:** No automated tests defined in `package.json`; JS syntax verified clean via `node`.
