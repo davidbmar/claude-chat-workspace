@@ -1,4 +1,4 @@
-agentA-js-fixes — Sprint 12
+agentA-rendering-fixes — Sprint 14
 
 Previous Sprint Summary
 ─────────────────────────────────────────
@@ -75,55 +75,37 @@ Completed assigned tasks.
 Sprint-Level Context
 
 Goal
-- B-019 Medium: Wire up scroll-to-bottom button — add JS scroll listener on #thread and click handler (the DOM/CSS already exist from Sprint 11, just needs ~10 lines of JS)
-- B-020 Low: Fix New Chat confirmation — only fire if thread has real user messages (.msg.user), not just error bubbles
-- B-021 Low: Fix dead Cmd+Enter else-if — collapse into single unified condition in keydown handler
-- B-022 Low: Shorten mobile input placeholder — use short placeholder at ≤600px via JS or CSS attr trick
-- F-019 New: Add word count alongside char count in the response stats label (already have words from SSE done event)
+- B-029 Medium: Fix numbered list rendering — items separated by blank lines all show as "1." because currentList resets on blank lines; fix to only break list on heading/code/table/HR or two consecutive blanks
+- B-030 Medium: Auto-close mobile sidebar after selecting a conversation — sidebar stays open at ≤600px after tapping a history entry; add auto-close on item click
+- B-031 Low: Render inline markdown in user message bubbles — **bold**, *italic*, `code` show as raw text in user bubbles; apply appendInlineSegmentsSingleLine() same as Claude bubbles
 
 Constraints
-- One agent only — all changes are in public/index.html JS section, no CSS conflict risk
+- One agent only — all changes in public/index.html JS section
 - Agent A owns everything
 
 
 Objective
-Fix remaining JavaScript issues in public/index.html — all small, targeted changes.
+Fix numbered list rendering and mobile UX issues in public/index.html.
 
 Tasks
 
-1. B-019 Scroll-to-bottom button JS: Find `#scroll-btn` in the DOM. Add:
-   - A scroll event listener on `#thread`: when `thread.scrollHeight - thread.scrollTop - thread.clientHeight > 100`, add class `visible` to `#scroll-btn`; otherwise remove it.
-   - A click handler on `#scroll-btn` that calls `thread.scrollTop = thread.scrollHeight` and removes `visible`.
-   - Also call the visibility check inside `scrollToBottom()` so the button hides after auto-scroll.
+1. B-029 Numbered list reset on blank lines: Find `processTextLines()` (or equivalent) where `currentList = null` is set when a non-list line is encountered. Change the logic so blank lines between list items do NOT immediately close the list. Instead:
+   - Track a `pendingListClose` flag when a blank line is seen while in a list
+   - If the very next non-blank line continues the same list type (numbered: `/^\d+\.\s/`, unordered: `/^-\s/`), stay in the list and continue numbering
+   - Only close the list when a non-list, non-blank line appears (heading, code fence, table, HR) OR when two consecutive blank lines are seen
+   - This ensures Claude's typical "1. item\n\nblank\n\n2. item" pattern renders as a sequential ordered list
 
-2. B-020 New Chat confirmation guard: In the `newChatBtn` click handler, change `thread.querySelector('.msg')` to `thread.querySelector('.msg.user')` so the confirm only fires when there are actual user messages, not just error bubbles.
+2. B-030 Auto-close mobile sidebar: Find the click handler(s) for history sidebar items (where conversations are loaded). Add a call to close the sidebar (remove the `active` class or equivalent) when `window.innerWidth <= 600`. The close logic already exists for the × button and click-outside overlay — reuse the same function/pattern.
 
-3. B-021 Collapse Cmd+Enter dead code: In the keydown handler, change:
-   ```js
-   if (e.key === 'Enter' && !e.shiftKey) { ... }
-   else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { ... }
-   ```
-   To a single condition:
-   ```js
-   if (e.key === 'Enter' && !e.shiftKey && !(e.metaKey || e.ctrlKey)) { ... }
-   // Cmd+Enter and Ctrl+Enter handled separately above or as:
-   if ((e.key === 'Enter') && !e.shiftKey) { send(); e.preventDefault(); }
-   ```
-   Simplest correct form: `if (e.key === 'Enter' && !e.shiftKey) { send(); e.preventDefault(); }` — this already handles Cmd+Enter since metaKey+Enter has shiftKey=false.
-
-4. B-022 Mobile placeholder: Use JS on DOMContentLoaded to set `msgInput.placeholder = window.innerWidth <= 600 ? 'Message Claude...' : 'Message Claude (Enter to send, Shift+Enter for newline)'`. Also add a resize listener to update it.
-
-5. F-019 Word count in stats: The SSE `done` event already sends `{ chars, words }`. Find where the "N chars" label is built after streaming and change it to "N chars · N words".
+3. B-031 User bubble markdown: Find where user message text is set (likely `userBubble.textContent = text` or similar). Replace with `appendInlineSegmentsSingleLine(userBubble, text)` (the same function used for inline markdown in Claude bubbles). This renders **bold**, *italic*, `code` in user messages. The function is XSS-safe (no innerHTML with raw user input).
 
 Acceptance Criteria
-- Scrolling up in a long thread shows ↓ button; clicking it scrolls to bottom and button hides
-- New Chat confirm does NOT appear when only an error bubble is in the thread
-- Cmd+Enter still sends (regression check)
-- Mobile shows "Message Claude..." placeholder at 400px
-- Response stats show "247 chars · 43 words" format
+- A numbered list from Claude with blank lines between items renders as 1, 2, 3... (not all 1.)
+- On mobile (400px), clicking a history entry loads the conversation AND closes the sidebar automatically
+- Typing "**hello** world" in the input and sending shows "**hello** world" rendered as bold + plain text in the user bubble
 
 ## Merge Order
-1. agentA-js-fixes
+1. agentA-rendering-fixes
 
 ## Merge Verification
 - node -e "require('fs').readFileSync('public/index.html','utf8'); console.log('HTML readable')"
