@@ -3,16 +3,19 @@ Done.
 ---
 
 **Files changed:**
-- `public/index.html` — B-010, B-012, B-013 fixes
-- `docs/project-memory/sessions/S-2026-03-20-0003-js-error-ux.md` — session doc (new)
+- `public/index.html` — JS and CSS changes for all three tasks
+- `docs/project-memory/sessions/S-2026-03-20-0030-copy-and-timestamps.md` — new session doc
 
 **Commands run:**
-- `git fetch origin && git merge origin/main`
-- `node -e "require('fs').readFileSync(...)"` — HTML parse check (pass)
-- `npm audit --audit-level=high` — 0 vulnerabilities
-- `git add && git commit && git push -u origin HEAD`
+- `git pull` (branch not yet on remote — skipped)
+- `node -e "require('fs').readFileSync(...)"` — HTML readable ✓
+- `npm audit --audit-level=high` — 0 vulnerabilities ✓
+- `git add`, `git commit`, `git push -u origin agentB-copy-and-timestamps`
 
-**Changes summary:**
-1. **B-010**: Added `friendlyErrorMessage()` helper that maps `authentication_error` / `rate_limit_error` / `overloaded_error` / network errors to human-readable strings. Unknown errors show "Something went wrong" with a `<details>` toggle exposing the raw error. Applied to both the SSE `parsed.error` path and the `catch` block.
-2. **B-012**: The 404 branch in `loadConversation()` no longer removes the sidebar entry immediately. Instead it shows the error bubble with a "Remove from history" button; clicking it removes the entry and re-renders the list.
-3. **B-013**: After setting `modelSelector.value = savedModel`, validates that the value actually stuck. If it didn't (stale ID not in any `<option>`), clears `localStorage` key and leaves `currentModel` at its default.
+**What was implemented:**
+
+1. **B-016 Copy fallback** — copy handler tries `navigator.clipboard.writeText()`, falls back to `document.execCommand('copy')` via hidden textarea, shows "Copy failed — HTTPS required" if both fail.
+
+2. **F-016 Copy markdown source** — `accumulated` string stored as `bubble.dataset.markdown` after SSE stream ends; copy handler reads `data-markdown` first (preserving fenced code, bold, tables etc.); same applied to conversations loaded from history.
+
+3. **F-014 History timestamps** — `relativeTime()` helper renders "just now" / "X min ago" / "X hours ago ago" / "yesterday" / locale date; each history entry gets a `.history-entry-time` span below the title; `setInterval(renderHistoryList, 60000)` refreshes live.
