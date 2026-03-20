@@ -424,13 +424,21 @@
     try {
       var res = await fetch('/api/conversations/' + id);
       if (res.status === 404) {
-        // Stale history entry — server restarted and lost this conversation
-        var staleHistory = getHistory().filter(function (h) { return h.id !== id; });
-        saveHistory(staleHistory);
-        renderHistoryList();
+        // Stale history entry — server restarted and lost this conversation.
+        // Keep entry in sidebar; show error bubble with explicit Remove button.
         var errBubble = addMsg('claude');
         errBubble.closest('.msg').classList.add('error');
         errBubble.textContent = 'This conversation is no longer available (server was restarted).';
+        var removeBtn = document.createElement('button');
+        removeBtn.textContent = 'Remove from history';
+        removeBtn.style.cssText = 'display:block;margin-top:8px;padding:4px 10px;cursor:pointer;';
+        removeBtn.addEventListener('click', function () {
+          var filtered = getHistory().filter(function (h) { return h.id !== id; });
+          saveHistory(filtered);
+          renderHistoryList();
+          removeBtn.remove();
+        });
+        errBubble.appendChild(removeBtn);
         return;
       }
       if (!res.ok) throw new Error('Failed to load conversation');
@@ -466,7 +474,12 @@
   var savedModel = localStorage.getItem('selectedModel');
   if (savedModel) {
     modelSelector.value = savedModel;
-    currentModel = savedModel;
+    if (modelSelector.value !== savedModel) {
+      // Stale model ID no longer matches any option — clear it
+      localStorage.removeItem('selectedModel');
+    } else {
+      currentModel = savedModel;
+    }
   }
 
   // Track model selection and persist it
@@ -595,6 +608,26 @@
     input.disabled = active;
   }
 
+  // Maps known API/network error strings to human-readable messages.
+  // Returns { text: string, details: string|null }.
+  function friendlyErrorMessage(raw) {
+    if (!raw) return { text: 'Something went wrong. Please try again.', details: null };
+    var r = String(raw);
+    if (r.indexOf('authentication_error') !== -1) {
+      return { text: 'API key is invalid or not configured. Please contact your administrator.', details: null };
+    }
+    if (r.indexOf('rate_limit_error') !== -1) {
+      return { text: 'Rate limit reached. Please wait a moment and try again.', details: null };
+    }
+    if (r.indexOf('overloaded_error') !== -1) {
+      return { text: 'Claude is currently busy. Please try again in a few seconds.', details: null };
+    }
+    if (r.indexOf('fetch') !== -1 || r.indexOf('network') !== -1 || r.indexOf('Failed to fetch') !== -1 || r.indexOf('NetworkError') !== -1) {
+      return { text: 'Could not reach the server. Check your connection and try again.', details: null };
+    }
+    return { text: 'Something went wrong. Please try again.', details: r };
+  }
+
   async function sendMessage() {
     var text = input.value.trim();
     if (!text || sendBtn.disabled) return;
@@ -662,7 +695,25 @@
           }
           if (parsed.error) {
             claudeBubble.closest('.msg').classList.add('error');
-            renderTextInto(claudeBubble, accumulated || ('Error: ' + parsed.error));
+            var friendlyMsg = friendlyErrorMessage(parsed.error);
+            if (firstToken) {
+              claudeBubble.removeChild(loadingDots);
+              firstToken = false;
+            }
+            while (claudeBubble.firstChild) claudeBubble.removeChild(claudeBubble.firstChild);
+            claudeBubble.appendChild(document.createTextNode(friendlyMsg.text));
+            if (friendlyMsg.details) {
+              var details = document.createElement('details');
+              details.style.marginTop = '6px';
+              var summary = document.createElement('summary');
+              summary.textContent = 'Details';
+              details.appendChild(summary);
+              var pre = document.createElement('pre');
+              pre.style.cssText = 'margin:4px 0 0;white-space:pre-wrap;font-size:0.85em;';
+              pre.textContent = friendlyMsg.details;
+              details.appendChild(pre);
+              claudeBubble.appendChild(details);
+            }
           }
           if (parsed.done && parsed.chars !== undefined) {
             claudeBubble.dataset.charcount = parsed.chars;
@@ -671,7 +722,24 @@
       }
     } catch (err) {
       claudeBubble.closest('.msg').classList.add('error');
-      claudeBubble.textContent = 'Error: ' + err.message;
+      var netMsg = friendlyErrorMessage(err.message);
+      if (firstToken && loadingDots.parentNode === claudeBubble) {
+        claudeBubble.removeChild(loadingDots);
+      }
+      while (claudeBubble.firstChild) claudeBubble.removeChild(claudeBubble.firstChild);
+      claudeBubble.appendChild(document.createTextNode(netMsg.text));
+      if (netMsg.details) {
+        var errDetails = document.createElement('details');
+        errDetails.style.marginTop = '6px';
+        var errSummary = document.createElement('summary');
+        errSummary.textContent = 'Details';
+        errDetails.appendChild(errSummary);
+        var errPre = document.createElement('pre');
+        errPre.style.cssText = 'margin:4px 0 0;white-space:pre-wrap;font-size:0.85em;';
+        errPre.textContent = netMsg.details;
+        errDetails.appendChild(errPre);
+        claudeBubble.appendChild(errDetails);
+      }
     }
 
     claudeBubble.classList.remove('cursor');
