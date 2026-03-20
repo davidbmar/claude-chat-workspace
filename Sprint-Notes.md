@@ -1,9 +1,9 @@
-# Sprint 16 — Agent Notes
+# Sprint 17 — Agent Notes
 
-*Started: 2026-03-20 02:23 UTC*
+*Started: 2026-03-20 02:47 UTC*
 
 Phase 1 Agents: 1
-- agentA-error-ux
+- agentA-accessibility-and-rendering
 
 Phase 2 Agents: 0
 (none)
@@ -12,24 +12,27 @@ Automated summaries from each agent are appended below as they complete.
 
 ---
 
-## agentA-error-ux
+## agentA-accessibility-and-rendering
 
-*Completed: 2026-03-20 02:25 UTC*
+*Completed: 2026-03-20 02:50 UTC*
 
-**Files changed**
-- `public/index.html` — two targeted changes:
-  - **B-034**: Added `staleConversationError` flag (line ~370). Set to `true` in the 404 branch of `loadConversation()`. At the top of `sendMessage()`, if the flag is set, silently clears the thread, generates a fresh `conversationId`, resets `firstMessageSent`, and clears the flag — so the send proceeds as a brand-new conversation.
-  - **B-035**: Added `stripMarkdown()` helper before `renderHistoryList()`. Applied to both `el.title` (tooltip) and `titleSpan.textContent` so all sidebar titles — including old entries stored with `**asterisks**` — render clean text.
-- `docs/project-memory/sessions/S-2026-03-20-0225-error-ux-fixes.md` — session doc
+**Files changed:**
+- `public/index.html` — all 6 tasks implemented
+- `docs/project-memory/sessions/S-2026-03-20-0248-accessibility-and-rendering.md` — session doc created
 
-**Commands run**
-- `git fetch origin`
-- `node -e "require('fs').readFileSync(...)"` — HTML readable ✓
-- `npm audit --audit-level=high` — 0 vulnerabilities ✓
-- `git commit` + `git push -u origin HEAD`
+**Commands run:**
+- `git pull` (no remote tracking — branch is new)
+- `node -e "require('fs')..."` — HTML readability check
+- `npm audit --audit-level=high` — 0 vulnerabilities
+- `git add`, `git commit`, `git push -u origin HEAD`
 
-**Notes**
-- Both fixes are minimal and non-breaking; no API changes, no new dependencies
-- B-034 Option B chosen per brief: user intent (typing after error = wants to continue chatting) maps cleanly to silent reset
-- The `stripMarkdown` regex is the same set used in B-032, ensuring consistent behavior across new and retroactive titles
+**Changes summary:**
+| Task | What was done |
+|------|--------------|
+| B-036 | Blockquote CSS + `processTextLines` detects `> ` lines, groups into `<blockquote>` with inline rendering |
+| B-037 | `renderTextInto` extracts language from fenced code, sets `data-language` on `<pre>`, adds `.code-lang-badge` span, adds `language-*` class on `<code>` |
+| B-038 | `showConfirmModal` adds Escape keydown + backdrop click listeners; both removed on close |
+| B-040 | `aria-label` added to `#send-btn`, `#hamburger-btn`, `#scroll-btn`, `#sidebar-close-btn` (HTML); `.delete-btn` gets `aria-label` via JS in `renderHistoryList` |
+| B-041 | `addMsg` skips the "Claude" label element when `isError` is true |
+| B-044 | Already implemented (`background:rgba(0,0,0,0.5)` + `display:flex` on show) — confirmed, no change needed |
 
