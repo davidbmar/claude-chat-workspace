@@ -1,55 +1,51 @@
-# Sprint 10
+# Sprint 11
 
 Goal
-- B-014 Medium: Fix mobile header — stop wrapping to two rows at narrow widths (target ≤56px header height at 400px)
-- B-016 Medium: Fix copy in non-HTTPS context — add fallback for clipboard API failure with user feedback
-- F-014 Low: Add relative timestamps to history sidebar entries (e.g. "2 hours ago", "yesterday")
-- F-015 Low: Add click-outside overlay to close mobile sidebar (semi-transparent backdrop)
-- F-016 Low: Copy button should copy original markdown source, not plain text
+- F-013 Low: Add "New Chat" confirmation when conversation is in progress — prevent accidental loss
+- B-017 Low: Fix mobile model selector label — show short labels (Haiku/Sonnet/Opus) at narrow widths
+- B-018 Low: Remove Copy button from error bubbles — only show on real Claude responses
+- F-017 New: Add keyboard shortcut Cmd+Enter (or Ctrl+Enter) as alternative send (some users expect this)
+- F-018 New: Add "scroll to bottom" button that appears when user scrolls up mid-stream
 
 Constraints
 - No two agents may modify the same files
-- Agent A owns: public/index.html CSS section (mobile header fix, sidebar overlay CSS)
-- Agent B owns: public/index.html JS section (copy fallback, timestamps, markdown copy source)
+- Agent A owns: public/index.html HTML structure + CSS (model selector labels, scroll button CSS)
+- Agent B owns: public/index.html JS (new chat confirmation, copy button guard, keyboard shortcut, scroll button logic)
 
-## agentA-mobile-and-overlay
-
-Objective
-Fix mobile header layout and add sidebar click-outside overlay in public/index.html
-
-Tasks
-1. B-014 Mobile header: At ≤600px (or ≤400px via media query), prevent header from wrapping. Options:
-   - Move model selector out of the header into the main area (below thread, above input), OR
-   - Collapse model selector to an icon button on mobile that opens a small dropdown, OR
-   - Keep header single-row by reducing font sizes and padding so everything fits at 400px
-   Pick the simplest approach that keeps header ≤56px tall on mobile.
-
-2. F-015 Sidebar overlay: Add a `#sidebar-overlay` div (if not already present from Sprint 9) — `position: fixed; inset: 0; z-index: 99; background: rgba(0,0,0,0.4); display: none`. When sidebar opens, show it. When user clicks the overlay, close the sidebar. This gives mobile users an intuitive tap-outside-to-close gesture.
-
-Acceptance Criteria
-- Header is single-row (≤56px) at 400px viewport width
-- Tapping anywhere outside the open sidebar closes it on mobile
-
-## agentB-copy-and-timestamps
+## agentA-ui-polish
 
 Objective
-Improve copy button behavior and add timestamps to history sidebar in public/index.html
+CSS and HTML polish in public/index.html
 
 Tasks
-1. B-016 Copy fallback: In the copy button click handler, after `navigator.clipboard.writeText()` fails (or in non-secure contexts), fall back to `document.execCommand('copy')` using a temporary textarea. If both fail, show a brief "Copy failed — HTTPS required" message where "Copied!" normally appears.
+1. B-017 Mobile model selector short labels: In the `<select id="model-selector">` options, add a `data-short` label approach OR simply shorten the option text values to use abbreviated labels on small screens. Simplest approach: change option text to use a format like "Haiku — fast" → keep as-is on desktop, but add a media query that sets `font-size: 0` on the select and uses `::after` pseudo... actually the simplest fix is: just increase `max-width` of the model selector in the mobile media query from `100px` to `130px` so "Sonnet — bala..." is readable, OR rename option values to shorter text: `Haiku`, `Sonnet`, `Opus` (3 words max each).
 
-2. F-016 Copy markdown source: Instead of copying `bubble.textContent` (rendered plain text), store the original markdown string on the bubble element as a `data-markdown` attribute when the SSE stream completes. Use that for copy. This preserves code blocks, table syntax, bold/italic etc.
-
-3. F-014 History timestamps: In `renderHistoryList()` / `pushConversationToHistory()`, store a `timestamp` (ISO string from `Date.now()`) alongside each history entry in localStorage. When rendering the sidebar, show a relative timestamp below each title: "just now" (<1min), "X min ago" (<1hr), "X hours ago" (<24hr), "yesterday", or the date for older entries. Update every 60 seconds via `setInterval`.
+2. F-018 Scroll-to-bottom button: Add a `#scroll-btn` button (`↓`) that is `position: fixed`, bottom-right of the thread area, hidden by default. Show it when the thread is scrolled more than 100px from the bottom (`thread.scrollTop < thread.scrollHeight - thread.clientHeight - 100`). Clicking it scrolls to bottom. CSS: `position: fixed; bottom: 80px; right: 20px; z-index: 50; border-radius: 50%; width: 36px; height: 36px; background: var(--accent); border: none; color: white; cursor: pointer; display: none; font-size: 18px`.
 
 Acceptance Criteria
-- Copy button works on HTTP (falls back gracefully, shows error if all methods fail)
-- Copying a Claude response with a code block preserves the fenced code block syntax
-- History entries show relative timestamps that update live
+- Model selector on mobile shows enough text to distinguish between models
+- Scroll-to-bottom button appears when scrolled up and scrolls to bottom on click
+
+## agentB-ux-interactions
+
+Objective
+JavaScript UX improvements in public/index.html
+
+Tasks
+1. F-013 New Chat confirmation: In the `newChatBtn` click handler, before clearing the thread, check if there are any `.msg` elements in `#thread`. If yes, show a `confirm()` dialog: "Start a new chat? Your current conversation is saved in history." Only proceed if confirmed (or thread is already empty).
+
+2. B-018 Copy button guard: In `addMsg('claude', ...)`, after creating the copy button, check whether the bubble has `isError` context. Add a flag — the simplest approach: when showing an error message (in the catch block or 404 handler), add a CSS class like `error-bubble` to the bubble element. In `addMsg`, check for this class and skip appending the copy button if present. OR: pass a second argument `{isError: true}` to `addMsg` for error cases.
+
+3. F-017 Cmd+Enter to send: In the `textarea` keydown handler, add a check for `(e.metaKey || e.ctrlKey) && e.key === 'Enter'` — trigger send (same as plain Enter). This should work alongside the existing Enter-to-send and Shift+Enter-for-newline logic.
+
+Acceptance Criteria
+- Clicking New Chat when messages exist shows confirm dialog; canceling leaves conversation intact
+- Error bubbles (stale 404 message, API error message) have no Copy button
+- Cmd+Enter and Ctrl+Enter both send the message
 
 ## Merge Order
-1. agentA-mobile-and-overlay
-2. agentB-copy-and-timestamps
+1. agentA-ui-polish
+2. agentB-ux-interactions
 
 ## Merge Verification
 - node -e "require('fs').readFileSync('public/index.html','utf8'); console.log('HTML readable')"
