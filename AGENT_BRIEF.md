@@ -1,4 +1,4 @@
-agentA-rendering-fixes — Sprint 14
+agentA-polish — Sprint 15
 
 Previous Sprint Summary
 ─────────────────────────────────────────
@@ -75,37 +75,42 @@ Completed assigned tasks.
 Sprint-Level Context
 
 Goal
-- B-029 Medium: Fix numbered list rendering — items separated by blank lines all show as "1." because currentList resets on blank lines; fix to only break list on heading/code/table/HR or two consecutive blanks
-- B-030 Medium: Auto-close mobile sidebar after selecting a conversation — sidebar stays open at ≤600px after tapping a history entry; add auto-close on item click
-- B-031 Low: Render inline markdown in user message bubbles — **bold**, *italic*, `code` show as raw text in user bubbles; apply appendInlineSegmentsSingleLine() same as Claude bubbles
+- B-031 Medium: Fix user bubble markdown in loadConversation — replace `bubble.textContent = m.content` with `appendInlineSegmentsSingleLine(bubble, m.content)` for user-role messages in the history-load path
+- B-032 Low: Strip markdown from sidebar history titles — when saving/displaying conversation title (first 40 chars of first message), strip markdown syntax so `**bold**` shows as `bold`
+- B-033 Low: Fix mobile code block width overflow — `<pre>` blocks exceed viewport at 400px; add `box-sizing:border-box` and `max-width:100%` to code block CSS
 
 Constraints
-- One agent only — all changes in public/index.html JS section
+- One agent only — all changes in public/index.html (JS + CSS)
 - Agent A owns everything
 
 
 Objective
-Fix numbered list rendering and mobile UX issues in public/index.html.
+Three small targeted fixes in public/index.html — one JS fix in the history load path, one title sanitizer, one CSS constraint.
 
 Tasks
 
-1. B-029 Numbered list reset on blank lines: Find `processTextLines()` (or equivalent) where `currentList = null` is set when a non-list line is encountered. Change the logic so blank lines between list items do NOT immediately close the list. Instead:
-   - Track a `pendingListClose` flag when a blank line is seen while in a list
-   - If the very next non-blank line continues the same list type (numbered: `/^\d+\.\s/`, unordered: `/^-\s/`), stay in the list and continue numbering
-   - Only close the list when a non-list, non-blank line appears (heading, code fence, table, HR) OR when two consecutive blank lines are seen
-   - This ensures Claude's typical "1. item\n\nblank\n\n2. item" pattern renders as a sequential ordered list
+1. B-031 loadConversation user bubble markdown: Find the `loadConversation` function (or wherever `GET /api/conversations/:id` response is rendered). In the loop that creates message bubbles, find the user-role path where text is set. Replace the plain `textContent` assignment with a call to `appendInlineSegmentsSingleLine(bubble, m.content)`. This is the same function already used in `sendMessage()` — mirror that behavior.
 
-2. B-030 Auto-close mobile sidebar: Find the click handler(s) for history sidebar items (where conversations are loaded). Add a call to close the sidebar (remove the `active` class or equivalent) when `window.innerWidth <= 600`. The close logic already exists for the × button and click-outside overlay — reuse the same function/pattern.
+2. B-032 Strip markdown from sidebar titles: Find where conversation titles are created from the first user message (look for the `slice(0, 40)` or similar truncation). Before storing or displaying the title, strip common markdown syntax:
+   - Remove `**text**` → `text` (bold)
+   - Remove `*text*` → `text` (italic)
+   - Remove `` `text` `` → `text` (inline code)
+   - Remove `# ` heading prefixes
+   Use a simple regex chain: `text.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1').replace(/`([^`]+)`/g, '$1').replace(/^#+\s*/gm, '')`
 
-3. B-031 User bubble markdown: Find where user message text is set (likely `userBubble.textContent = text` or similar). Replace with `appendInlineSegmentsSingleLine(userBubble, text)` (the same function used for inline markdown in Claude bubbles). This renders **bold**, *italic*, `code` in user messages. The function is XSS-safe (no innerHTML with raw user input).
+3. B-033 Mobile code block CSS: Find the CSS rules for `pre` and `code` elements. Add or update:
+   ```css
+   pre { max-width: 100%; box-sizing: border-box; overflow-x: auto; }
+   ```
+   Ensure the bubble container doesn't allow children to overflow: add `overflow: hidden` or `max-width: 100%` to `.msg.claude` or `.bubble` if needed.
 
 Acceptance Criteria
-- A numbered list from Claude with blank lines between items renders as 1, 2, 3... (not all 1.)
-- On mobile (400px), clicking a history entry loads the conversation AND closes the sidebar automatically
-- Typing "**hello** world" in the input and sending shows "**hello** world" rendered as bold + plain text in the user bubble
+- Send `**hello** world`, reload page, load from sidebar — user bubble shows bold "hello" not raw `**hello**`
+- Send a message with `**bold**` in it — sidebar title shows "bold" not "**bold**"
+- At 400px viewport, a code block response fits within the viewport (no 8px overflow)
 
 ## Merge Order
-1. agentA-rendering-fixes
+1. agentA-polish
 
 ## Merge Verification
 - node -e "require('fs').readFileSync('public/index.html','utf8'); console.log('HTML readable')"
