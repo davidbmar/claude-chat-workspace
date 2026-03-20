@@ -27,7 +27,8 @@
     #sidebar { width: 220px; flex-shrink: 0; border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
     #sidebar .sidebar-heading { font-size: 12px; font-weight: 600; color: var(--text-muted); padding: 14px 14px 8px; text-transform: uppercase; letter-spacing: 0.05em; flex-shrink: 0; }
     #history-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; padding: 0 8px 8px; }
-    .history-entry { padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background 0.15s, color 0.15s; }
+    .history-entry { padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; transition: background 0.15s, color 0.15s; }
+    .history-entry-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .history-entry:hover { background: var(--surface); color: var(--text); }
     .history-entry.active { background: var(--surface); color: var(--text); }
 
@@ -211,8 +212,38 @@
 
     .char-count { font-size: 10px; color: var(--text-muted); margin-top: 2px; text-align: right; }
 
-    .delete-btn { float: right; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 0 2px; line-height: 1; }
+    .bubble table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+    .bubble th, .bubble td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; font-size: 0.9em; }
+    .bubble th { background: rgba(255,255,255,0.06); font-weight: 600; }
+    .bubble tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+
+    .delete-btn { flex-shrink: 0; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 0 2px; line-height: 1; }
     .delete-btn:hover { color: var(--error); }
+
+    /* Sidebar overlay — covers content area on mobile when sidebar is open */
+    #sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 99;
+      background: rgba(0,0,0,0.4);
+    }
+    #sidebar-overlay.overlay-visible { display: block; }
+
+    /* Sidebar close button — visible only on mobile */
+    #sidebar-close-btn {
+      display: none;
+      align-self: flex-end;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      line-height: 1;
+      padding: 8px 12px 4px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    #sidebar-close-btn:hover { color: var(--text); }
 
     /* Hamburger — hidden on desktop, shown on mobile */
     #hamburger-btn {
@@ -229,6 +260,7 @@
 
     @media (max-width: 600px) {
       #hamburger-btn { display: block; }
+      #sidebar-close-btn { display: block; }
       #sidebar {
         display: none;
         position: fixed;
@@ -246,8 +278,10 @@
   </style>
 </head>
 <body>
+<div id="sidebar-overlay"></div>
 <div id="app">
   <div id="sidebar">
+    <button id="sidebar-close-btn" title="Close sidebar">&times;</button>
     <div class="sidebar-heading">History</div>
     <div id="history-list"></div>
   </div>
@@ -303,6 +337,8 @@
   var historyList = document.getElementById('history-list');
   var hamburgerBtn = document.getElementById('hamburger-btn');
   var sidebar = document.getElementById('sidebar');
+  var sidebarOverlay = document.getElementById('sidebar-overlay');
+  var sidebarCloseBtn = document.getElementById('sidebar-close-btn');
 
   // --- localStorage history helpers ---
   var HISTORY_KEY = 'chat-history';
@@ -330,6 +366,10 @@
       el.className = 'history-entry' + (entry.id === conversationId ? ' active' : '');
       el.title = entry.title || '';
 
+      var titleSpan = document.createElement('span');
+      titleSpan.className = 'history-entry-title';
+      titleSpan.textContent = entry.title || '(untitled)';
+
       var delBtn = document.createElement('button');
       delBtn.className = 'delete-btn';
       delBtn.textContent = '\u00D7';
@@ -338,8 +378,8 @@
         e.stopPropagation();
         deleteConversation(entry.id);
       });
+      el.appendChild(titleSpan);
       el.appendChild(delBtn);
-      el.appendChild(document.createTextNode(entry.title || '(untitled)'));
 
       el.addEventListener('click', function () { loadConversation(entry.id); });
       historyList.appendChild(el);
@@ -459,10 +499,30 @@
     input.focus();
   });
 
+  function openSidebar() {
+    sidebar.classList.add('sidebar-open');
+    sidebarOverlay.classList.add('overlay-visible');
+  }
+
+  function closeSidebar() {
+    sidebar.classList.remove('sidebar-open');
+    sidebarOverlay.classList.remove('overlay-visible');
+  }
+
   // Hamburger: toggle sidebar visibility on mobile
   hamburgerBtn.addEventListener('click', function () {
-    sidebar.classList.toggle('sidebar-open');
+    if (sidebar.classList.contains('sidebar-open')) {
+      closeSidebar();
+    } else {
+      openSidebar();
+    }
   });
+
+  // Close button inside sidebar
+  sidebarCloseBtn.addEventListener('click', closeSidebar);
+
+  // Overlay click dismisses sidebar
+  sidebarOverlay.addEventListener('click', closeSidebar);
 
   // Auto-resize textarea up to max-height
   input.addEventListener('input', function () {
