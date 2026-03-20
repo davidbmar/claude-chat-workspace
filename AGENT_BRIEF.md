@@ -1,4 +1,4 @@
-agentA-polish — Sprint 15
+agentA-error-ux — Sprint 16
 
 Previous Sprint Summary
 ─────────────────────────────────────────
@@ -75,42 +75,44 @@ Completed assigned tasks.
 Sprint-Level Context
 
 Goal
-- B-031 Medium: Fix user bubble markdown in loadConversation — replace `bubble.textContent = m.content` with `appendInlineSegmentsSingleLine(bubble, m.content)` for user-role messages in the history-load path
-- B-032 Low: Strip markdown from sidebar history titles — when saving/displaying conversation title (first 40 chars of first message), strip markdown syntax so `**bold**` shows as `bold`
-- B-033 Low: Fix mobile code block width overflow — `<pre>` blocks exceed viewport at 400px; add `box-sizing:border-box` and `max-width:100%` to code block CSS
+- B-034 Medium: Fix input enabled on 404 error state — when a conversation 404s, disable textarea+send OR silently recover (clear error banner) on first successful new send
+- B-035 Low: Apply markdown stripping to sidebar titles at render time — so pre-Sprint-15 conversations with raw **asterisks** in their titles show clean text
 
 Constraints
-- One agent only — all changes in public/index.html (JS + CSS)
+- One agent only — all changes in public/index.html
 - Agent A owns everything
 
 
 Objective
-Three small targeted fixes in public/index.html — one JS fix in the history load path, one title sanitizer, one CSS constraint.
+Two targeted fixes: error-state input behavior and retroactive sidebar title cleanup.
 
 Tasks
 
-1. B-031 loadConversation user bubble markdown: Find the `loadConversation` function (or wherever `GET /api/conversations/:id` response is rendered). In the loop that creates message bubbles, find the user-role path where text is set. Replace the plain `textContent` assignment with a call to `appendInlineSegmentsSingleLine(bubble, m.content)`. This is the same function already used in `sendMessage()` — mirror that behavior.
+1. B-034 Stale conversation error state input:
+   - When `loadConversation()` gets a 404, the app currently shows an error banner and leaves the input enabled
+   - Option A (simpler): In the 404 error handler inside `loadConversation()`, disable the textarea and send button (`msgInput.disabled = true; sendBtn.disabled = true`) and add a note to the error message like "Start a new chat to continue"
+   - Option B (smarter): Leave input enabled but in the message send handler, if the current conversationId returned a 404, clear the error banner before sending (treat as a fresh conversation). Update `conversationId` to null so a new one gets created.
+   - Implement Option B — it's the better UX. When the user types after a 404, they clearly want to continue chatting. Clear the error banner, set `currentConversationId = null`, and let the send proceed normally as a new conversation.
 
-2. B-032 Strip markdown from sidebar titles: Find where conversation titles are created from the first user message (look for the `slice(0, 40)` or similar truncation). Before storing or displaying the title, strip common markdown syntax:
-   - Remove `**text**` → `text` (bold)
-   - Remove `*text*` → `text` (italic)
-   - Remove `` `text` `` → `text` (inline code)
-   - Remove `# ` heading prefixes
-   Use a simple regex chain: `text.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1').replace(/`([^`]+)`/g, '$1').replace(/^#+\s*/gm, '')`
-
-3. B-033 Mobile code block CSS: Find the CSS rules for `pre` and `code` elements. Add or update:
-   ```css
-   pre { max-width: 100%; box-sizing: border-box; overflow-x: auto; }
-   ```
-   Ensure the bubble container doesn't allow children to overflow: add `overflow: hidden` or `max-width: 100%` to `.msg.claude` or `.bubble` if needed.
+2. B-035 Retroactive sidebar title markdown stripping:
+   - Find where sidebar history entries are rendered (the function that reads from localStorage and creates the sidebar `<li>` elements)
+   - Before setting the title text in the DOM, apply the same markdown-stripping regex used in B-032:
+     ```js
+     function stripMarkdown(text) {
+       return text.replace(/\*\*([^*]+)\*\*/g, '$1')
+                  .replace(/\*([^*]+)\*/g, '$1')
+                  .replace(/`([^`]+)`/g, '$1')
+                  .replace(/^#+\s*/gm, '');
+     }
+     ```
+   - This ensures ALL conversations (old and new) show clean titles without asterisks
 
 Acceptance Criteria
-- Send `**hello** world`, reload page, load from sidebar — user bubble shows bold "hello" not raw `**hello**`
-- Send a message with `**bold**` in it — sidebar title shows "bold" not "**bold**"
-- At 400px viewport, a code block response fits within the viewport (no 8px overflow)
+- Load a stale 404 conversation. Type a message and send. The error banner disappears, the message sends as a new conversation, and the sidebar updates with a new title.
+- Old conversations stored with `**bold**` in their title show `bold` (no asterisks) in the sidebar after reload.
 
 ## Merge Order
-1. agentA-polish
+1. agentA-error-ux
 
 ## Merge Verification
 - node -e "require('fs').readFileSync('public/index.html','utf8'); console.log('HTML readable')"
