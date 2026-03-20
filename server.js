@@ -2,7 +2,13 @@
 
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const Anthropic = require('@anthropic-ai/sdk');
+
+const WORKSPACE_DIR = process.env.WORKSPACE_DIR || '/workspace';
+if (!fs.existsSync(WORKSPACE_DIR)) fs.mkdirSync(WORKSPACE_DIR, { recursive: true });
+// Track files per conversation: Map<conversationId, string[]>
+const conversationFiles = new Map();
 
 const app = express();
 
@@ -30,6 +36,63 @@ const TOOL_COLOR = process.env.TOOL_COLOR || '#7c3aed';
 // Per-session conversation history: Map<conversationId, [{role, content}]>
 // Resets on server restart — intentional for a lightweight chat session model.
 const conversations = new Map();
+
+// ---------------------------------------------------------------------------
+// Fenced code block extractor.
+// Returns [{lang, filename, code}] for every ```...``` block in text.
+// ---------------------------------------------------------------------------
+const LANG_TO_FILENAME = {
+  html: 'index.html',
+  javascript: 'app.js',
+  js: 'app.js',
+  python: 'main.py',
+  py: 'main.py',
+  css: 'styles.css',
+  typescript: 'app.ts',
+  ts: 'app.ts',
+  sh: 'run.sh',
+  bash: 'run.sh',
+};
+
+function extractCodeBlocks(text) {
+  const results = [];
+  const seen = new Map(); // filename -> count for deduplication
+  const fenceRe = /^```([^\n]*)\n([\s\S]*?)^```/gm;
+  let match;
+  let blockIndex = 0;
+  while ((match = fenceRe.exec(text)) !== null) {
+    blockIndex++;
+    const header = match[1].trim();
+    const code = match[2];
+    let lang = '';
+    let filename = '';
+
+    const colonIdx = header.indexOf(':');
+    if (colonIdx !== -1) {
+      // Explicit filename: ```html:todo.html
+      lang = header.slice(0, colonIdx);
+      filename = header.slice(colonIdx + 1);
+    } else {
+      lang = header;
+      filename = LANG_TO_FILENAME[lang.toLowerCase()] || `generated-${blockIndex}.txt`;
+    }
+
+    // Deduplicate: append -2, -3, etc. for repeated filenames
+    if (seen.has(filename)) {
+      const count = seen.get(filename) + 1;
+      seen.set(filename, count);
+      const dot = filename.lastIndexOf('.');
+      filename = dot !== -1
+        ? `${filename.slice(0, dot)}-${count}${filename.slice(dot)}`
+        : `${filename}-${count}`;
+    } else {
+      seen.set(filename, 1);
+    }
+
+    results.push({ lang, filename, code });
+  }
+  return results;
+}
 
 // ---------------------------------------------------------------------------
 // Swappable LLM backend adapter.
@@ -125,11 +188,45 @@ app.post('/api/chat', async (req, res) => {
     }
     history.push({ role: 'assistant', content: assistantText });
     res.write(`data: ${JSON.stringify({ done: true, chars: assistantText.length, words: assistantText.split(/\s+/).filter(Boolean).length })}\n\n`);
+    const blocks = extractCodeBlocks(assistantText);
+    if (blocks.length > 0) {
+      const saved = [];
+      for (const { filename, code } of blocks) {
+        const filePath = path.join(WORKSPACE_DIR, filename);
+        fs.writeFileSync(filePath, code, 'utf8');
+        saved.push(filename);
+      }
+      if (!conversationFiles.has(conversationId)) conversationFiles.set(conversationId, []);
+      for (const f of saved) {
+        if (!conversationFiles.get(conversationId).includes(f)) {
+          conversationFiles.get(conversationId).push(f);
+        }
+      }
+      res.write(`data: ${JSON.stringify({ files: saved })}\n\n`);
+    }
   } catch (err) {
     console.error('[chat] stream error:', err.message);
     res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
   }
   res.end();
+});
+
+app.get('/api/files', (req, res) => {
+  const { conversationId } = req.query;
+  const names = conversationId ? (conversationFiles.get(conversationId) || []) : [];
+  const files = names.map(name => {
+    const fp = path.join(WORKSPACE_DIR, name);
+    const stat = fs.existsSync(fp) ? fs.statSync(fp) : null;
+    return { name, size: stat ? stat.size : 0 };
+  });
+  res.json({ files });
+});
+
+app.get('/api/files/:name', (req, res) => {
+  const name = path.basename(req.params.name); // prevent path traversal
+  const fp = path.join(WORKSPACE_DIR, name);
+  if (!fs.existsSync(fp)) return res.status(404).json({ error: 'not found' });
+  res.download(fp, name);
 });
 
 const PORT = process.env.PORT || 8080;
