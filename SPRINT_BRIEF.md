@@ -1,51 +1,56 @@
-# Sprint 11
+# Sprint 12
 
 Goal
-- F-013 Low: Add "New Chat" confirmation when conversation is in progress — prevent accidental loss
-- B-017 Low: Fix mobile model selector label — show short labels (Haiku/Sonnet/Opus) at narrow widths
-- B-018 Low: Remove Copy button from error bubbles — only show on real Claude responses
-- F-017 New: Add keyboard shortcut Cmd+Enter (or Ctrl+Enter) as alternative send (some users expect this)
-- F-018 New: Add "scroll to bottom" button that appears when user scrolls up mid-stream
+- B-019 Medium: Wire up scroll-to-bottom button — add JS scroll listener on #thread and click handler (the DOM/CSS already exist from Sprint 11, just needs ~10 lines of JS)
+- B-020 Low: Fix New Chat confirmation — only fire if thread has real user messages (.msg.user), not just error bubbles
+- B-021 Low: Fix dead Cmd+Enter else-if — collapse into single unified condition in keydown handler
+- B-022 Low: Shorten mobile input placeholder — use short placeholder at ≤600px via JS or CSS attr trick
+- F-019 New: Add word count alongside char count in the response stats label (already have words from SSE done event)
 
 Constraints
-- No two agents may modify the same files
-- Agent A owns: public/index.html HTML structure + CSS (model selector labels, scroll button CSS)
-- Agent B owns: public/index.html JS (new chat confirmation, copy button guard, keyboard shortcut, scroll button logic)
+- One agent only — all changes are in public/index.html JS section, no CSS conflict risk
+- Agent A owns everything
 
-## agentA-ui-polish
-
-Objective
-CSS and HTML polish in public/index.html
-
-Tasks
-1. B-017 Mobile model selector short labels: In the `<select id="model-selector">` options, add a `data-short` label approach OR simply shorten the option text values to use abbreviated labels on small screens. Simplest approach: change option text to use a format like "Haiku — fast" → keep as-is on desktop, but add a media query that sets `font-size: 0` on the select and uses `::after` pseudo... actually the simplest fix is: just increase `max-width` of the model selector in the mobile media query from `100px` to `130px` so "Sonnet — bala..." is readable, OR rename option values to shorter text: `Haiku`, `Sonnet`, `Opus` (3 words max each).
-
-2. F-018 Scroll-to-bottom button: Add a `#scroll-btn` button (`↓`) that is `position: fixed`, bottom-right of the thread area, hidden by default. Show it when the thread is scrolled more than 100px from the bottom (`thread.scrollTop < thread.scrollHeight - thread.clientHeight - 100`). Clicking it scrolls to bottom. CSS: `position: fixed; bottom: 80px; right: 20px; z-index: 50; border-radius: 50%; width: 36px; height: 36px; background: var(--accent); border: none; color: white; cursor: pointer; display: none; font-size: 18px`.
-
-Acceptance Criteria
-- Model selector on mobile shows enough text to distinguish between models
-- Scroll-to-bottom button appears when scrolled up and scrolls to bottom on click
-
-## agentB-ux-interactions
+## agentA-js-fixes
 
 Objective
-JavaScript UX improvements in public/index.html
+Fix remaining JavaScript issues in public/index.html — all small, targeted changes.
 
 Tasks
-1. F-013 New Chat confirmation: In the `newChatBtn` click handler, before clearing the thread, check if there are any `.msg` elements in `#thread`. If yes, show a `confirm()` dialog: "Start a new chat? Your current conversation is saved in history." Only proceed if confirmed (or thread is already empty).
 
-2. B-018 Copy button guard: In `addMsg('claude', ...)`, after creating the copy button, check whether the bubble has `isError` context. Add a flag — the simplest approach: when showing an error message (in the catch block or 404 handler), add a CSS class like `error-bubble` to the bubble element. In `addMsg`, check for this class and skip appending the copy button if present. OR: pass a second argument `{isError: true}` to `addMsg` for error cases.
+1. B-019 Scroll-to-bottom button JS: Find `#scroll-btn` in the DOM. Add:
+   - A scroll event listener on `#thread`: when `thread.scrollHeight - thread.scrollTop - thread.clientHeight > 100`, add class `visible` to `#scroll-btn`; otherwise remove it.
+   - A click handler on `#scroll-btn` that calls `thread.scrollTop = thread.scrollHeight` and removes `visible`.
+   - Also call the visibility check inside `scrollToBottom()` so the button hides after auto-scroll.
 
-3. F-017 Cmd+Enter to send: In the `textarea` keydown handler, add a check for `(e.metaKey || e.ctrlKey) && e.key === 'Enter'` — trigger send (same as plain Enter). This should work alongside the existing Enter-to-send and Shift+Enter-for-newline logic.
+2. B-020 New Chat confirmation guard: In the `newChatBtn` click handler, change `thread.querySelector('.msg')` to `thread.querySelector('.msg.user')` so the confirm only fires when there are actual user messages, not just error bubbles.
+
+3. B-021 Collapse Cmd+Enter dead code: In the keydown handler, change:
+   ```js
+   if (e.key === 'Enter' && !e.shiftKey) { ... }
+   else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { ... }
+   ```
+   To a single condition:
+   ```js
+   if (e.key === 'Enter' && !e.shiftKey && !(e.metaKey || e.ctrlKey)) { ... }
+   // Cmd+Enter and Ctrl+Enter handled separately above or as:
+   if ((e.key === 'Enter') && !e.shiftKey) { send(); e.preventDefault(); }
+   ```
+   Simplest correct form: `if (e.key === 'Enter' && !e.shiftKey) { send(); e.preventDefault(); }` — this already handles Cmd+Enter since metaKey+Enter has shiftKey=false.
+
+4. B-022 Mobile placeholder: Use JS on DOMContentLoaded to set `msgInput.placeholder = window.innerWidth <= 600 ? 'Message Claude...' : 'Message Claude (Enter to send, Shift+Enter for newline)'`. Also add a resize listener to update it.
+
+5. F-019 Word count in stats: The SSE `done` event already sends `{ chars, words }`. Find where the "N chars" label is built after streaming and change it to "N chars · N words".
 
 Acceptance Criteria
-- Clicking New Chat when messages exist shows confirm dialog; canceling leaves conversation intact
-- Error bubbles (stale 404 message, API error message) have no Copy button
-- Cmd+Enter and Ctrl+Enter both send the message
+- Scrolling up in a long thread shows ↓ button; clicking it scrolls to bottom and button hides
+- New Chat confirm does NOT appear when only an error bubble is in the thread
+- Cmd+Enter still sends (regression check)
+- Mobile shows "Message Claude..." placeholder at 400px
+- Response stats show "247 chars · 43 words" format
 
 ## Merge Order
-1. agentA-ui-polish
-2. agentB-ux-interactions
+1. agentA-js-fixes
 
 ## Merge Verification
 - node -e "require('fs').readFileSync('public/index.html','utf8'); console.log('HTML readable')"
