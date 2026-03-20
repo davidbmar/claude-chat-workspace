@@ -206,13 +206,13 @@
       box-sizing: border-box;
     }
     .bubble pre code { background: none; padding: 0; }
-    .bubble h1, .bubble h2, .bubble h3 { margin: 8px 0 4px; font-weight: 600; line-height: 1.3; }
-    .bubble h1 { font-size: 1.4em; }
-    .bubble h2 { font-size: 1.2em; }
-    .bubble h3 { font-size: 1.05em; }
-    .bubble ul, .bubble ol { margin: 4px 0 4px 20px; }
+    .bubble h1 { font-size: 1.5rem; font-weight: 700; margin: 16px 0 8px; line-height: 1.3; }
+    .bubble h2 { font-size: 1.25rem; font-weight: 600; margin: 14px 0 6px; line-height: 1.3; color: #cbd5e0; }
+    .bubble h3 { font-size: 1.05rem; font-weight: 600; margin: 12px 0 4px; line-height: 1.3; color: #a0aec0; text-transform: uppercase; letter-spacing: 0.04em; }
+    .bubble ul { margin: 6px 0 6px 20px; padding: 0; list-style: disc; }
+    .bubble ol { margin: 6px 0 6px 20px; padding: 0; }
     .bubble li { margin: 2px 0; }
-    hr { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
+    hr { border: none; border-top: 1px solid rgba(255,255,255,0.15); margin: 12px 0; }
 
     .char-count { font-size: 10px; color: var(--text-muted); margin-top: 2px; text-align: right; }
 
@@ -344,7 +344,7 @@
           <option value="claude-sonnet-4-6" selected>Sonnet</option>
           <option value="claude-opus-4-5">Opus</option>
         </select>
-        <button id="new-chat-btn" title="Start a new conversation">+ New Chat</button>
+        <button id="new-chat-btn" title="Start a new conversation" aria-label="Start a new conversation">+ New Chat</button>
       </div>
     </header>
 
@@ -476,6 +476,8 @@
       var el = document.createElement('div');
       el.className = 'history-entry' + (entry.id === conversationId ? ' active' : '');
       el.title = entry.title ? stripMarkdown(entry.title) : '';
+      el.setAttribute('tabindex', '0');
+      el.setAttribute('role', 'button');
 
       var content = document.createElement('div');
       content.className = 'history-entry-content';
@@ -497,6 +499,7 @@
       delBtn.textContent = '\u00D7';
       delBtn.title = 'Delete conversation';
       delBtn.setAttribute('aria-label', 'Delete conversation');
+      delBtn.setAttribute('tabindex', '-1');
       delBtn.addEventListener('click', function (e) {
         e.stopPropagation();
         deleteConversation(entry.id);
@@ -508,6 +511,15 @@
         loadConversation(entry.id);
         // B-030: auto-close sidebar on mobile after selecting a conversation
         if (window.innerWidth <= 600) closeSidebar();
+      });
+
+      // B-043: Enter/Space loads conversation when history entry is keyboard-focused
+      el.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          loadConversation(entry.id);
+          if (window.innerWidth <= 600) closeSidebar();
+        }
       });
       historyList.appendChild(el);
     });
@@ -752,6 +764,7 @@
         copyBtn.className = 'copy-btn';
         copyBtn.textContent = 'Copy';
         copyBtn.title = 'Copy message';
+        copyBtn.setAttribute('aria-label', 'Copy message');
         copyBtn.addEventListener('click', function () {
           var text = bubble.dataset.markdown || bubble.textContent;
           function showCopied() {
