@@ -221,6 +221,13 @@
     .bubble th { background: rgba(255,255,255,0.06); font-weight: 600; }
     .bubble tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
 
+    /* B-036: Blockquote rendering */
+    .bubble blockquote { border-left: 3px solid #4a5568; margin: 8px 0; padding: 4px 12px; color: #a0aec0; font-style: italic; background: rgba(255,255,255,0.03); border-radius: 0 4px 4px 0; }
+
+    /* B-037: Code block language badge */
+    .bubble pre { position: relative; }
+    .code-lang-badge { position: absolute; top: 8px; right: 8px; font-size: 0.7rem; color: #718096; text-transform: uppercase; letter-spacing: 0.05em; }
+
     .delete-btn { flex-shrink: 0; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 0 2px; line-height: 1; }
     .delete-btn:hover { color: var(--error); }
 
@@ -321,13 +328,13 @@
 </div>
 <div id="app">
   <div id="sidebar">
-    <button id="sidebar-close-btn" title="Close sidebar">&times;</button>
+    <button id="sidebar-close-btn" title="Close sidebar" aria-label="Close sidebar">&times;</button>
     <div class="sidebar-heading">History</div>
     <div id="history-list"></div>
   </div>
   <div id="chat-area">
     <header>
-      <button id="hamburger-btn" title="Toggle sidebar">&#9776;</button>
+      <button id="hamburger-btn" title="Toggle sidebar" aria-label="Open conversation history">&#9776;</button>
       <span class="logo">&#x1F4AC;</span>
       <h1>Claude Chat</h1>
       <span class="team-name" id="team-name"></span>
@@ -348,10 +355,10 @@
       </div>
     </div>
 
-    <button id="scroll-btn" title="Scroll to bottom">&#8595;</button>
+    <button id="scroll-btn" title="Scroll to bottom" aria-label="Scroll to bottom">&#8595;</button>
     <div id="input-area">
       <textarea id="msg-input" rows="1" placeholder="Message Claude (Enter or Cmd+Enter to send, Shift+Enter for newline)"></textarea>
-      <button id="send-btn" title="Send">&#9658;</button>
+      <button id="send-btn" title="Send" aria-label="Send message">&#9658;</button>
     </div>
   </div>
 </div>
@@ -391,18 +398,34 @@
   function showConfirmModal() {
     return new Promise(function (resolve) {
       confirmModal.style.display = 'flex';
-      function onOk() {
+
+      function cleanup() {
         confirmModal.style.display = 'none';
+        document.removeEventListener('keydown', onEscape);
+        confirmModal.removeEventListener('click', onBackdropClick);
+      }
+      function onOk() {
+        cleanup();
         confirmCancelBtn.removeEventListener('click', onCancel);
         resolve(true);
       }
       function onCancel() {
-        confirmModal.style.display = 'none';
+        cleanup();
         confirmOkBtn.removeEventListener('click', onOk);
         resolve(false);
       }
+      // B-038: Escape key dismisses modal
+      function onEscape(e) {
+        if (e.key === 'Escape') onCancel();
+      }
+      // B-038: clicking the backdrop (not the inner card) dismisses modal
+      function onBackdropClick(e) {
+        if (e.target === confirmModal) onCancel();
+      }
       confirmOkBtn.addEventListener('click', onOk, { once: true });
       confirmCancelBtn.addEventListener('click', onCancel, { once: true });
+      document.addEventListener('keydown', onEscape);
+      confirmModal.addEventListener('click', onBackdropClick);
     });
   }
 
@@ -473,6 +496,7 @@
       delBtn.className = 'delete-btn';
       delBtn.textContent = '\u00D7';
       delBtn.title = 'Delete conversation';
+      delBtn.setAttribute('aria-label', 'Delete conversation');
       delBtn.addEventListener('click', function (e) {
         e.stopPropagation();
         deleteConversation(entry.id);
@@ -714,7 +738,8 @@
     var bubble = document.createElement('div');
     bubble.className = 'bubble';
 
-    msg.appendChild(label);
+    // B-041: skip sender label for error/system messages — only real responses get attribution
+    if (!isError) msg.appendChild(label);
 
     if (role === 'claude') {
       // Wrap bubble + copy button in a relative container for hover positioning
@@ -958,11 +983,23 @@
     for (var i = 0; i < parts.length; i++) {
       var part = parts[i];
       if (part.startsWith('```')) {
+        // B-037: extract language identifier from opening fence (e.g. ```python)
+        var langMatch = part.match(/^```(\w+)/);
+        var lang = langMatch ? langMatch[1] : '';
         // Code block — strip fences and optional lang tag, set via textContent
         var code = part.replace(/^```[\w]*\n?/, '').replace(/```$/, '');
         var pre = document.createElement('pre');
+        if (lang) pre.dataset.language = lang;
         var codeEl = document.createElement('code');
+        if (lang) codeEl.className = 'language-' + lang;
         codeEl.textContent = code;
+        if (lang) {
+          // Language badge anchored to the top-right of the pre block
+          var badge = document.createElement('span');
+          badge.className = 'code-lang-badge';
+          badge.textContent = lang;
+          pre.appendChild(badge);
+        }
         pre.appendChild(codeEl);
         el.appendChild(pre);
       } else {
@@ -1007,6 +1044,7 @@
   function processTextLines(parent, text) {
     var lines = text.split('\n');
     var currentList = null;
+    var currentBlockquote = null; // B-036: groups consecutive `> ` lines
     var pendingListClose = false; // B-029: deferred close on first blank line in a list
     var consecutiveBlanks = 0;   // B-029: two consecutive blanks force-close the list
     var regularLines = [];
@@ -1021,6 +1059,26 @@
 
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i];
+
+      // B-036: Blockquote line starting with `> `
+      if (line.startsWith('> ') || line === '>') {
+        flushRegularLines();
+        currentList = null;
+        pendingListClose = false;
+        consecutiveBlanks = 0;
+        if (!currentBlockquote) {
+          currentBlockquote = document.createElement('blockquote');
+          parent.appendChild(currentBlockquote);
+        } else {
+          // Add a <br> between grouped blockquote lines
+          currentBlockquote.appendChild(document.createElement('br'));
+        }
+        appendInlineSegmentsSingleLine(currentBlockquote, line.startsWith('> ') ? line.slice(2) : '');
+        continue;
+      }
+
+      // Non-blockquote line resets the blockquote group
+      currentBlockquote = null;
 
       // GFM table detection: line 0 is a pipe row, line 1 is a separator row
       if (/^\|.+\|$/.test(line) && i + 1 < lines.length && /^\|[-| :]+\|$/.test(lines[i + 1])) {
@@ -1094,6 +1152,7 @@
 
       // B-029: Blank line handling — defer list close inside a list context
       if (trimmed === '') {
+        currentBlockquote = null; // B-036: blank line breaks blockquote grouping
         if (currentList) {
           consecutiveBlanks++;
           if (consecutiveBlanks >= 2) {
