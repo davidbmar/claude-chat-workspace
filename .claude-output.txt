@@ -3,19 +3,17 @@ Done.
 ---
 
 **Files changed:**
-- `public/index.html` — JS and CSS changes for all three tasks
-- `docs/project-memory/sessions/S-2026-03-20-0030-copy-and-timestamps.md` — new session doc
+- `public/index.html` — 3 changes:
+  - Mobile `#model-selector` max-width: `100px` → `130px`
+  - Option text shortened to `Haiku`, `Sonnet`, `Opus`
+  - Added `#scroll-btn` CSS block and `<button id="scroll-btn">` element above `#input-area`
+- `docs/project-memory/sessions/S-2026-03-20-0040-ui-polish-sprint11.md` — new session doc
 
 **Commands run:**
 - `git pull` (branch not yet on remote — skipped)
-- `node -e "require('fs').readFileSync(...)"` — HTML readable ✓
-- `npm audit --audit-level=high` — 0 vulnerabilities ✓
-- `git add`, `git commit`, `git push -u origin agentB-copy-and-timestamps`
+- `git add` + `git commit`
+- `git push -u origin HEAD`
 
-**What was implemented:**
-
-1. **B-016 Copy fallback** — copy handler tries `navigator.clipboard.writeText()`, falls back to `document.execCommand('copy')` via hidden textarea, shows "Copy failed — HTTPS required" if both fail.
-
-2. **F-016 Copy markdown source** — `accumulated` string stored as `bubble.dataset.markdown` after SSE stream ends; copy handler reads `data-markdown` first (preserving fenced code, bold, tables etc.); same applied to conversations loaded from history.
-
-3. **F-014 History timestamps** — `relativeTime()` helper renders "just now" / "X min ago" / "X hours ago ago" / "yesterday" / locale date; each history entry gets a `.history-entry-time` span below the title; `setInterval(renderHistoryList, 60000)` refreshes live.
+**Notes / follow-on work:**
+- Agent B must wire up the `#scroll-btn` JS: scroll event listener on `#thread` to toggle `.visible` class, and click handler to call `scrollToBottom()`. The button is already in the DOM with id `scroll-btn`.
+- No test suite found in this project, so no test command to run.

@@ -1,4 +1,4 @@
-agentB-copy-and-timestamps — Sprint 10
+agentA-ui-polish — Sprint 11
 
 Previous Sprint Summary
 ─────────────────────────────────────────
@@ -75,38 +75,26 @@ Completed assigned tasks.
 Sprint-Level Context
 
 Goal
-- B-014 Medium: Fix mobile header — stop wrapping to two rows at narrow widths (target ≤56px header height at 400px)
-- B-016 Medium: Fix copy in non-HTTPS context — add fallback for clipboard API failure with user feedback
-- F-014 Low: Add relative timestamps to history sidebar entries (e.g. "2 hours ago", "yesterday")
-- F-015 Low: Add click-outside overlay to close mobile sidebar (semi-transparent backdrop)
-- F-016 Low: Copy button should copy original markdown source, not plain text
+- F-013 Low: Add "New Chat" confirmation when conversation is in progress — prevent accidental loss
+- B-017 Low: Fix mobile model selector label — show short labels (Haiku/Sonnet/Opus) at narrow widths
+- B-018 Low: Remove Copy button from error bubbles — only show on real Claude responses
+- F-017 New: Add keyboard shortcut Cmd+Enter (or Ctrl+Enter) as alternative send (some users expect this)
+- F-018 New: Add "scroll to bottom" button that appears when user scrolls up mid-stream
 
 Constraints
 - No two agents may modify the same files
-- Agent A owns: public/index.html CSS section (mobile header fix, sidebar overlay CSS)
-- Agent B owns: public/index.html JS section (copy fallback, timestamps, markdown copy source)
+- Agent A owns: public/index.html HTML structure + CSS (model selector labels, scroll button CSS)
+- Agent B owns: public/index.html JS (new chat confirmation, copy button guard, keyboard shortcut, scroll button logic)
 
 
 Objective
-Improve copy button behavior and add timestamps to history sidebar in public/index.html
+CSS and HTML polish in public/index.html
 
 Tasks
-1. B-016 Copy fallback: In the copy button click handler, after `navigator.clipboard.writeText()` fails (or in non-secure contexts), fall back to `document.execCommand('copy')` using a temporary textarea. If both fail, show a brief "Copy failed — HTTPS required" message where "Copied!" normally appears.
+1. B-017 Mobile model selector short labels: In the `<select id="model-selector">` options, add a `data-short` label approach OR simply shorten the option text values to use abbreviated labels on small screens. Simplest approach: change option text to use a format like "Haiku — fast" → keep as-is on desktop, but add a media query that sets `font-size: 0` on the select and uses `::after` pseudo... actually the simplest fix is: just increase `max-width` of the model selector in the mobile media query from `100px` to `130px` so "Sonnet — bala..." is readable, OR rename option values to shorter text: `Haiku`, `Sonnet`, `Opus` (3 words max each).
 
-2. F-016 Copy markdown source: Instead of copying `bubble.textContent` (rendered plain text), store the original markdown string on the bubble element as a `data-markdown` attribute when the SSE stream completes. Use that for copy. This preserves code blocks, table syntax, bold/italic etc.
-
-3. F-014 History timestamps: In `renderHistoryList()` / `pushConversationToHistory()`, store a `timestamp` (ISO string from `Date.now()`) alongside each history entry in localStorage. When rendering the sidebar, show a relative timestamp below each title: "just now" (<1min), "X min ago" (<1hr), "X hours ago" (<24hr), "yesterday", or the date for older entries. Update every 60 seconds via `setInterval`.
+2. F-018 Scroll-to-bottom button: Add a `#scroll-btn` button (`↓`) that is `position: fixed`, bottom-right of the thread area, hidden by default. Show it when the thread is scrolled more than 100px from the bottom (`thread.scrollTop < thread.scrollHeight - thread.clientHeight - 100`). Clicking it scrolls to bottom. CSS: `position: fixed; bottom: 80px; right: 20px; z-index: 50; border-radius: 50%; width: 36px; height: 36px; background: var(--accent); border: none; color: white; cursor: pointer; display: none; font-size: 18px`.
 
 Acceptance Criteria
-- Copy button works on HTTP (falls back gracefully, shows error if all methods fail)
-- Copying a Claude response with a code block preserves the fenced code block syntax
-- History entries show relative timestamps that update live
-
-## Merge Order
-1. agentA-mobile-and-overlay
-2. agentB-copy-and-timestamps
-
-## Merge Verification
-- node -e "require('fs').readFileSync('public/index.html','utf8'); console.log('HTML readable')"
-- docker compose up --build -d && sleep 5 && curl -s http://localhost:8080/api/health
-- npm audit --audit-level=high
+- Model selector on mobile shows enough text to distinguish between models
+- Scroll-to-bottom button appears when scrolled up and scrolls to bottom on click
