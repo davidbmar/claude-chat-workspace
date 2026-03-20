@@ -1,10 +1,10 @@
-# Sprint 10 — Agent Notes
+# Sprint 11 — Agent Notes
 
-*Started: 2026-03-20 00:29 UTC*
+*Started: 2026-03-20 00:39 UTC*
 
 Phase 1 Agents: 2
-- agentA-mobile-and-overlay
-- agentB-copy-and-timestamps
+- agentA-ui-polish
+- agentB-ux-interactions
 
 Phase 2 Agents: 0
 (none)
@@ -13,46 +13,46 @@ Automated summaries from each agent are appended below as they complete.
 
 ---
 
-## agentA-mobile-and-overlay
+## agentA-ui-polish
 
-*Completed: 2026-03-20 00:31 UTC*
+*Completed: 2026-03-20 00:41 UTC*
 
 **Files changed:**
-- `public/index.html` — Mobile media query: replaced `header { flex-wrap: wrap }` with `flex-wrap: nowrap; padding: 10px 12px; gap: 6px` and added mobile-specific size reductions for h1 (14px), logo (16px), model selector (max-width: 100px, font-size: 11px), and new-chat button (11px/compact padding)
-- `docs/project-memory/sessions/S-2026-03-20-0029-mobile-header-overlay.md` — Session doc
+- `public/index.html` — 3 changes:
+  - Mobile `#model-selector` max-width: `100px` → `130px`
+  - Option text shortened to `Haiku`, `Sonnet`, `Opus`
+  - Added `#scroll-btn` CSS block and `<button id="scroll-btn">` element above `#input-area`
+- `docs/project-memory/sessions/S-2026-03-20-0040-ui-polish-sprint11.md` — new session doc
 
 **Commands run:**
-- `git pull origin main`
-- `node -e "..."` — HTML validation checks (6/6 PASS)
+- `git pull` (branch not yet on remote — skipped)
 - `git add` + `git commit`
-- `git push -u origin agentA-mobile-and-overlay`
+- `git push -u origin HEAD`
 
-**Notes:**
-- **B-014 fixed**: Header now uses `flex-wrap: nowrap` with reduced padding/font sizes on mobile. At 400px the header fits in ~42px (well under the 56px target).
-- **F-015 already done**: The `#sidebar-overlay` div, CSS, and JS (`openSidebar`/`closeSidebar`/overlay click handler) were all implemented in Sprint 9. No additional work was needed.
+**Notes / follow-on work:**
+- Agent B must wire up the `#scroll-btn` JS: scroll event listener on `#thread` to toggle `.visible` class, and click handler to call `scrollToBottom()`. The button is already in the DOM with id `scroll-btn`.
+- No test suite found in this project, so no test command to run.
 
 
 ---
 
-## agentB-copy-and-timestamps
+## agentB-ux-interactions
 
-*Completed: 2026-03-20 00:31 UTC*
+*Completed: 2026-03-20 00:42 UTC*
 
 **Files changed:**
-- `public/index.html` — JS and CSS changes for all three tasks
-- `docs/project-memory/sessions/S-2026-03-20-0030-copy-and-timestamps.md` — new session doc
+- `public/index.html` — three JS UX improvements
+- `docs/project-memory/sessions/S-2026-03-20-0040-ux-interactions-sprint11.md` — session doc
 
 **Commands run:**
-- `git pull` (branch not yet on remote — skipped)
-- `node -e "require('fs').readFileSync(...)"` — HTML readable ✓
-- `npm audit --audit-level=high` — 0 vulnerabilities ✓
-- `git add`, `git commit`, `git push -u origin agentB-copy-and-timestamps`
+- `git pull` (no remote branch yet)
+- `node -e "..."` — HTML parse check
+- `npm audit --audit-level=high` — 0 vulnerabilities
+- `git add` + `git commit`
+- `git push -u origin HEAD`
 
-**What was implemented:**
-
-1. **B-016 Copy fallback** — copy handler tries `navigator.clipboard.writeText()`, falls back to `document.execCommand('copy')` via hidden textarea, shows "Copy failed — HTTPS required" if both fail.
-
-2. **F-016 Copy markdown source** — `accumulated` string stored as `bubble.dataset.markdown` after SSE stream ends; copy handler reads `data-markdown` first (preserving fenced code, bold, tables etc.); same applied to conversations loaded from history.
-
-3. **F-014 History timestamps** — `relativeTime()` helper renders "just now" / "X min ago" / "X hours ago ago" / "yesterday" / locale date; each history entry gets a `.history-entry-time` span below the title; `setInterval(renderHistoryList, 60000)` refreshes live.
+**Changes summary:**
+1. **F-013** — `newChatBtn` click now calls `thread.querySelector('.msg')` and shows `confirm()` before clearing. Canceling leaves conversation intact.
+2. **B-018** — `addMsg(role, opts)` accepts `{isError: true}`; skips copy button creation. Known error sites in `loadConversation` (404 + catch) pass this flag. For mid-stream errors in `sendMessage`, the existing copy button is found via `querySelector('.copy-btn')` and removed.
+3. **F-017** — Added `else if ((e.metaKey || e.ctrlKey) && e.key === 'Enter')` branch in keydown handler. Updated placeholder text to hint at Cmd+Enter.
 
