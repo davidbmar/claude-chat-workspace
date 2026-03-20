@@ -1,9 +1,9 @@
-# Sprint 14 — Agent Notes
+# Sprint 15 — Agent Notes
 
-*Started: 2026-03-20 01:49 UTC*
+*Started: 2026-03-20 02:06 UTC*
 
 Phase 1 Agents: 1
-- agentA-rendering-fixes
+- agentA-polish
 
 Phase 2 Agents: 0
 (none)
@@ -12,28 +12,29 @@ Automated summaries from each agent are appended below as they complete.
 
 ---
 
-## agentA-rendering-fixes
+## agentA-polish
 
-*Completed: 2026-03-20 01:52 UTC*
+*Completed: 2026-03-20 02:08 UTC*
 
 **Files changed**
-- `public/index.html` — three bug fixes in the JS section
-- `docs/project-memory/sessions/S-2026-03-20-0149-rendering-fixes-sprint14.md` — session doc
+- `public/index.html` — three targeted edits
+- `docs/project-memory/sessions/S-2026-03-20-0207-polish-sprint15.md` — new session doc
 
 **Commands run**
-- `git fetch/pull` (no remote branch existed yet)
-- `node -e "..."` — HTML readability check ✓
-- `npm audit --audit-level=high` — 0 vulnerabilities ✓
-- `git add`, `git commit`, `git push -u origin HEAD`
+- `git pull` (no remote tracking, branch is new)
+- `node -e "require('fs').readFileSync(...)"` — HTML readability check ✅
+- `npm audit --audit-level=high` — 0 vulnerabilities ✅
+- `git add / git commit / git push`
 
-**What was implemented**
+**Changes made**
 
 | Bug | Fix |
 |-----|-----|
-| B-029 | `processTextLines` now uses `pendingListClose` + `consecutiveBlanks` to defer list closure on blank lines; two consecutive blanks or a structural element force-close |
-| B-030 | History entry click handler calls `closeSidebar()` when `window.innerWidth <= 600` |
-| B-031 | `userBubble.textContent = text` → `appendInlineSegmentsSingleLine(userBubble, text)` |
+| B-031 | `loadConversation` user bubble: replaced `bubble.textContent = m.content` with `appendInlineSegmentsSingleLine(bubble, ...)` — now mirrors `sendMessage` behavior |
+| B-032 | Sidebar title: regex chain strips `**bold**`, `*italic*`, `` `code` ``, `# headings` before `slice(0,40)` |
+| B-033 | `.bubble pre` CSS: added `max-width: 100%; box-sizing: border-box` — prevents code block overflow at 400px viewport |
 
 **Notes / follow-on**
-- B-031 uses `appendInlineSegmentsSingleLine` (single-line inline only, per brief). Multi-line user messages keep their visual newlines via `white-space: pre-wrap` on the bubble CSS. If full multi-line markdown is desired for user bubbles in a future sprint, switching to `appendInlineSegments` would add `<br>` support.
+- No follow-on work needed; all three fixes are self-contained in `index.html`.
+- The `typeof m.content === 'string'` guard in B-031 is defensive — user messages are always strings today, but the Claude messages API can return either strings or content arrays, so the guard future-proofs against accidental misuse.
 
