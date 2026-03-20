@@ -1,62 +1,78 @@
-# Sprint 19
+# Sprint 20
 
 Goal
-- B-046 Critical: Fix unordered list bullet matching — renderer only handles `- ` but Claude outputs `• ` (U+2022) and `* ` too; match all three
-- B-050 High: Support nested lists — indented `  - sub-item` lines should produce nested `<ul><li>` inside the parent `<li>`
-- B-047 Medium: Fix HR visibility — increase opacity from 0.15 to 0.3
-- B-051 Medium: Add ARIA dialog semantics to confirm modal — role, aria-modal, aria-labelledby, button labels
-- B-052 Medium: Add accessible label to model selector — aria-label or visually-hidden `<label>`
+- F-020 New (High): Generalize into configurable "tool-chat" module — server reads TOOL_NAME, TOOL_ICON, TOOL_DESCRIPTION, SYSTEM_PROMPT env vars; injects them into the page so one Docker image powers multiple catalog tools
+- B-054 Medium: User bubble block-level markdown — apply full markdown renderer to user messages (not just inline)
+- B-055 Low: Mobile header wraps at 375px — truncate title or icon-only New Chat button at narrow widths
+- B-056 Low: Mobile input bottom clip — fix safe-area padding on textarea at 375px
 
 Constraints
-- One agent only — all changes in public/index.html
+- One agent only — changes in server.js AND public/index.html
 - Agent A owns everything
 
-## agentA-lists-and-aria
+## agentA-generalize
 
 Objective
-Fix unordered list rendering for all bullet formats, add nested list support, fix HR visibility, and complete modal/selector ARIA.
+Turn claude-chat-workspace into a generic configurable "tool-chat" module. Any tool in the portal catalog can use this same Docker image with different env vars to create a specialized chat experience. Also fix remaining mobile/UX bugs.
 
 Tasks
 
-1. B-046 Unordered list bullet formats:
-   In the markdown renderer (`processTextLines` or equivalent), update the condition that matches unordered list items to also catch:
-   - `• text` (Unicode bullet U+2022) — Claude's default bullet char
-   - `* text` (asterisk-space — must not conflict with bold `**`)
-   The simplest approach: normalize at parse time. When a line starts with `• ` or `* ` (but not `**`), convert it to treat as `- ` before processing. Then the existing `- ` branch handles all three.
-   Make sure `* ` is only matched as a list item when the line starts with exactly `* ` (single asterisk + space), not `**`.
+1. F-020 Configurable tool-chat module:
 
-2. B-050 Nested lists:
-   After fixing B-046, add support for indented list items. When inside a `<ul>` or `<ol>` context and a line matches `/^  [-•*] /` or `/^    [-•*] /` (2 or 4 spaces), create a nested `<ul>` inside the current `<li>` rather than flushing to plain text.
-   Keep it simple — support one level of nesting (2-space or 4-space indent). Do not try to implement arbitrary depth.
-   When the indent returns to zero, close the nested list and continue the parent list.
+   **server.js changes:**
+   - Read these env vars (with sensible defaults):
+     ```
+     TOOL_NAME        (default: "Claude Chat")
+     TOOL_ICON        (default: "💬")
+     TOOL_DESCRIPTION (default: "Chat with Claude")
+     SYSTEM_PROMPT    (default: "" — no system prompt)
+     TOOL_COLOR       (default: "#7c3aed" — purple)
+     ```
+   - Add a `GET /api/config` endpoint that returns these as JSON:
+     ```json
+     { "toolName": "...", "toolIcon": "...", "toolDescription": "...", "toolColor": "..." }
+     ```
+     (Do NOT expose SYSTEM_PROMPT to the client — it stays server-side only)
+   - In the `POST /api/chat` handler, inject SYSTEM_PROMPT as the `system` parameter in the Anthropic API call when it is set:
+     ```js
+     const params = { model, messages: history, max_tokens: 8096, stream: true };
+     if (process.env.SYSTEM_PROMPT) params.system = process.env.SYSTEM_PROMPT;
+     ```
 
-3. B-047 HR opacity:
-   Find the CSS rule: `hr { border: none; border-top: 1px solid rgba(255,255,255,0.15); margin: 12px 0; }`
-   Change `0.15` to `0.3`: `border-top: 1px solid rgba(255,255,255,0.3);`
+   **public/index.html changes:**
+   - On DOMContentLoaded, fetch `/api/config` and apply:
+     - Set `document.title` to `toolName`
+     - Replace hardcoded "Claude Chat" header text with `toolIcon + " " + toolName`
+     - Replace hardcoded subtitle/description with `toolDescription` if present
+     - Apply `toolColor` as CSS custom property `--tool-color` for the accent color (send button, user bubble background, etc.)
+   - Replace all hardcoded "Claude Chat" strings in the HTML with a template placeholder that gets replaced on config load
+   - The UI should be visually neutral until config loads (show "..." or use defaults)
 
-4. B-051 Confirm modal ARIA:
-   Find `#confirm-modal`. Add to the outer overlay div:
-   - `role="dialog"`
-   - `aria-modal="true"`
-   - `aria-labelledby="confirm-modal-title"`
-   Find the `<p>` inside the modal card and add `id="confirm-modal-title"`.
-   Find the Cancel button inside the modal and add `aria-label="Cancel — keep current conversation"`.
-   Find the confirm/New Chat button and add `aria-label="Confirm — start new conversation"`.
+2. B-054 User bubble full markdown:
+   In the user message rendering path, replace `appendInlineSegmentsSingleLine(bubble, text)` with the full `renderTextInto(bubble, text)` function (or equivalent) that handles block-level elements. The same function used for Claude bubbles. This makes user messages render headings, code blocks, lists, etc. consistently.
 
-5. B-052 Model selector label:
-   Find `#model-selector` (the `<select>` element). Add `aria-label="Select AI model"` directly to the element. Alternatively add a visually-hidden `<label for="model-selector">Model</label>` before it using CSS `.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); }`.
+3. B-055 Mobile header wrap:
+   In the CSS, at ≤480px breakpoint, add:
+   ```css
+   #new-chat-btn span { display: none; }  /* hide "+ New Chat" text, keep icon */
+   .app-title { font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+   ```
+
+4. B-056 Mobile input bottom clip:
+   Add `padding-bottom: env(safe-area-inset-bottom, 8px)` to the input container CSS so it respects device safe areas on mobile.
 
 Acceptance Criteria
-- Ask Claude "give me a bullet list of 5 things" — response renders as proper `<ul><li>` whether Claude uses `•`, `-`, or `*` format
-- Ask "show nested bullet list with sub-items" — nested items render indented under their parent as nested `<ul>`
-- A response with `---` shows a clearly visible horizontal dividing line
-- Opening New Chat modal: screen reader announces "dialog", buttons have descriptive labels
-- Model selector has accessible label readable by screen readers
+- Run with `TOOL_NAME="App Builder" TOOL_ICON="🔨" TOOL_COLOR="#e53e3e" SYSTEM_PROMPT="You are an expert software architect..."` — page title, header, and accent color all reflect the custom config
+- Run with default env (no vars set) — app looks and works exactly as before (backwards compatible)
+- `/api/config` returns JSON with tool metadata
+- User message with `# heading\n**bold**\n\`\`\`python\ncode\n\`\`\`` renders formatted, not raw
+- Mobile 375px — header stays single row, input visible without clipping
 
 ## Merge Order
-1. agentA-lists-and-aria
+1. agentA-generalize
 
 ## Merge Verification
 - node -e "require('fs').readFileSync('public/index.html','utf8'); console.log('HTML readable')"
-- docker compose up --build -d && sleep 5 && curl -s http://localhost:8080/api/health
+- node -e "require('fs').readFileSync('server.js','utf8'); console.log('server.js readable')"
+- docker compose up --build -d && sleep 5 && curl -s http://localhost:8080/api/health && curl -s http://localhost:8080/api/config
 - npm audit --audit-level=high

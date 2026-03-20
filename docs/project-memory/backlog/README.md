@@ -96,12 +96,14 @@ What should happen?
 | B-043 | History sidebar entries not keyboard-navigable | All .history-entry divs have tabIndex=-1 and no role attribute. Keyboard-only users cannot select previous conversations. | medium | Open |
 | B-044 | New Chat modal missing backdrop overlay | The confirmation modal has no semi-transparent backdrop behind it — page content remains fully visible behind the dialog, reducing focus clarity. | low | Done (Sprint 17) |
 | B-045 | Heading size steps too subtle (H1/H2/H3 nearly identical) | H1=21px, H2=18px, H3=15.75px all weight 600 — visually hard to distinguish H2 from H3. Needs larger size steps. | low | Open |
-| B-046 | Unordered list bullet character not matched | Fix only handles `- ` prefix but Claude often outputs `• ` (U+2022) and `* ` bullet formats. Renderer ignores these — they become raw text instead of `<ul><li>`. | high | Open |
-| B-047 | Horizontal rule (`---`) nearly invisible | `<hr>` border is `rgba(255,255,255,0.15)` — 15% white on dark background is invisible. Needs `rgba(255,255,255,0.3)` or similar. | medium | Open |
-| B-048 | Tab order dominated by sidebar delete buttons | 17 sidebar delete (×) buttons precede the message input in tab order. | medium | Done (Sprint 18) |
-| B-049 | Copy button and New Chat button missing aria-label | Both use `title` attribute only. | low | Done (Sprint 18) |
-| B-050 | Nested lists render as raw text | Indented list items (`  - Sub-item`) are not parsed — fall through to raw text rendering instead of nested `<ul><li>`. | high | Open |
-| B-051 | Confirm modal missing ARIA dialog semantics | `#confirm-modal` has no `role="dialog"`, `aria-modal="true"`, or `aria-labelledby`. Buttons inside have no aria-label. Screen readers won't announce it as a dialog. | medium | Open |
-| B-052 | Model selector has no accessible label | `#model-selector` has only `title="Select model"` — no `<label>` element or `aria-label`. Not reliably announced by screen readers. | medium | Open |
-| B-053 | History entry accessible name includes timestamp | `.history-entry` role=button accessible name concatenates title + timestamp (e.g. "hello world1 hour ago×"). Screen readers read garbled run-on text. | low | Open |
-| B-054 | User bubbles show raw fenced code blocks | `appendInlineSegmentsSingleLine()` handles inline code but not ``` fenced blocks — raw triple-backtick text visible in user bubbles. | low | Open |
+| B-046 | Unordered list bullet character not matched | Fix only handles `- ` prefix but Claude often outputs `• ` (U+2022) and `* ` bullet formats. | high | Done (Sprint 19) |
+| B-047 | Horizontal rule (`---`) nearly invisible | `<hr>` border was `rgba(255,255,255,0.15)` — now 0.3, visible. | medium | Done (Sprint 19) |
+| B-048 | Tab order dominated by sidebar delete buttons | Delete buttons now tabindex="-1". | medium | Done (Sprint 18) |
+| B-049 | Copy button and New Chat button missing aria-label | Both now have explicit aria-label. | low | Done (Sprint 18) |
+| B-050 | Nested lists render as raw text | Nested `  - sub-item` lines now produce nested `<ul><li>`. | high | Done (Sprint 19) |
+| B-051 | Confirm modal missing ARIA dialog semantics | role="dialog", aria-modal, aria-labelledby, button labels all added. | medium | Done (Sprint 19) |
+| B-052 | Model selector has no accessible label | aria-label="Select AI model" added. | medium | Done (Sprint 19) |
+| B-053 | History entry accessible name lacks timestamp | title attr contains first message only — two "Hello" convos indistinguishable by screen reader. Add timestamp to aria-label. | low | Open |
+| B-054 | User bubbles only render inline markdown — block elements show raw | Headings, fenced code, lists, blockquote, table, HR all appear as raw markdown in user message bubbles. Inline (bold/italic/code) works. | medium | Open |
+| B-055 | Mobile header wraps to two lines at 375px | At narrow widths, "Claude Chat" title wraps — pushes header taller, reduces thread space. Need to truncate title or hide New Chat button text on mobile. | low | Open |
+| B-056 | Mobile input area clips at bottom of viewport | Textarea bottom bleeds slightly below safe area at 375px — "Claude" portion of placeholder hidden. | low | Open |
