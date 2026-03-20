@@ -1,10 +1,10 @@
-# Sprint 8 — Agent Notes
+# Sprint 9 — Agent Notes
 
-*Started: 2026-03-19 21:47 UTC*
+*Started: 2026-03-20 00:02 UTC*
 
 Phase 1 Agents: 2
-- agentA-frontend-fixes
-- agentB-table-renderer
+- agentA-css-and-layout
+- agentB-js-error-ux
 
 Phase 2 Agents: 0
 (none)
@@ -13,43 +13,48 @@ Automated summaries from each agent are appended below as they complete.
 
 ---
 
-## agentA-frontend-fixes
+## agentB-js-error-ux
 
-*Completed: 2026-03-19 21:48 UTC*
+*Completed: 2026-03-20 00:04 UTC*
 
 **Files changed:**
-- `public/index.html` — added localStorage restore on page load + save on model change
-
-**New files:**
-- `docs/project-memory/sessions/S-2026-03-19-2147-frontend-fixes-sprint8.md`
+- `public/index.html` — B-010, B-012, B-013 fixes
+- `docs/project-memory/sessions/S-2026-03-20-0003-js-error-ux.md` — session doc (new)
 
 **Commands run:**
-- `git pull origin agentA-frontend-fixes`
-- `git add`, `git commit`, `git push -u origin HEAD`
+- `git fetch origin && git merge origin/main`
+- `node -e "require('fs').readFileSync(...)"` — HTML parse check (pass)
+- `npm audit --audit-level=high` — 0 vulnerabilities
+- `git add && git commit && git push -u origin HEAD`
 
-**Notes:**
-- **B-005 (copy button overlap)** was already fixed — `padding-right: 56px` was present on `.msg.claude .bubble` (line 100) from a prior sprint. No change needed.
-- **B-008 (model persistence)** fixed: localStorage key `selectedModel` is now written on change and read on page load. Selecting Haiku and reloading will keep Haiku selected.
+**Changes summary:**
+1. **B-010**: Added `friendlyErrorMessage()` helper that maps `authentication_error` / `rate_limit_error` / `overloaded_error` / network errors to human-readable strings. Unknown errors show "Something went wrong" with a `<details>` toggle exposing the raw error. Applied to both the SSE `parsed.error` path and the `catch` block.
+2. **B-012**: The 404 branch in `loadConversation()` no longer removes the sidebar entry immediately. Instead it shows the error bubble with a "Remove from history" button; clicking it removes the entry and re-renders the list.
+3. **B-013**: After setting `modelSelector.value = savedModel`, validates that the value actually stuck. If it didn't (stale ID not in any `<option>`), clears `localStorage` key and leaves `currentModel` at its default.
 
 
 ---
 
-## agentB-table-renderer
+## agentA-css-and-layout
 
-*Completed: 2026-03-19 21:49 UTC*
+*Completed: 2026-03-20 00:04 UTC*
 
-**Files changed**
-- `public/index.html` — added `parseTableCells()` helper function and GFM table block detection inside `processTextLines()`
-- `docs/project-memory/sessions/S-2026-03-19-2149-table-renderer.md` — session doc
+**Files changed:**
+- `public/index.html` — all three bug fixes applied
 
-**Commands run**
-- `git fetch origin` — checked for agentA's branch (not on remote yet; agentA and agentB edits are in different areas of the file, so no conflict risk)
-- Node.js syntax validation — script block parsed cleanly
-- `git commit` + `git push -u origin HEAD`
+**Commands run:**
+- `git pull` (no tracking branch; no-op)
+- `node -e` syntax check — passed
+- `git add` + `git commit`
+- `git push -u origin HEAD`
 
-**Implementation details**
-The table detector checks two conditions before collecting lines: the current line must match `/^\|.+\|$/` and the _next_ line must match `/^\|[-| :]+\|$/` (separator row). This two-line lookahead prevents false positives from single pipe-containing lines. Table lines are consumed via inner while-loop with `i--` before `continue` to counteract the outer for-loop increment. All cell text is set via `textContent` — no `innerHTML` anywhere, consistent with the renderer's XSS-safe design.
+**Changes summary:**
 
-**Follow-on work**
-- AgentA's changes to `public/index.html` (model persistence, copy button overlap) will need a clean merge against this branch — the modified regions don't overlap, so it should be conflict-free.
+| Ticket | Change |
+|--------|--------|
+| B-009 | Added `#sidebar-overlay` div + `#sidebar-close-btn` (×) to HTML; CSS for overlay (z-index:99) and close button; `openSidebar()`/`closeSidebar()` JS helpers; hamburger, close btn, and overlay click all call these helpers |
+| B-011 | Added 4 CSS rules for `.bubble table/th/td/tr:nth-child(even) td` — borders, padding, header background, alternating rows |
+| B-015 | Changed `.history-entry` to `display:flex; align-items:center; gap:6px`; added `.history-entry-title` (flex:1 + ellipsis); `.delete-btn` changed from `float:right` to `flex-shrink:0`; `renderHistoryList()` wraps title in `<span class="history-entry-title">` |
+
+**Notes:** No automated tests defined in `package.json`; JS syntax verified clean via `node`.
 
