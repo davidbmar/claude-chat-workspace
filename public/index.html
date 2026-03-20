@@ -212,7 +212,7 @@
     .bubble ul { margin: 6px 0 6px 20px; padding: 0; list-style: disc; }
     .bubble ol { margin: 6px 0 6px 20px; padding: 0; }
     .bubble li { margin: 2px 0; }
-    hr { border: none; border-top: 1px solid rgba(255,255,255,0.15); margin: 12px 0; }
+    hr { border: none; border-top: 1px solid rgba(255,255,255,0.3); margin: 12px 0; }
 
     .char-count { font-size: 10px; color: var(--text-muted); margin-top: 2px; text-align: right; }
 
@@ -317,12 +317,12 @@
 </head>
 <body>
 <div id="sidebar-overlay"></div>
-<div id="confirm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:200">
+<div id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:200">
   <div style="background:#1e2235;border-radius:12px;padding:24px;max-width:360px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.5)">
-    <p style="color:#e2e8f0;margin:0 0 20px;font-size:0.95rem">Start a new chat? Your current conversation will remain in history.</p>
+    <p id="confirm-modal-title" style="color:#e2e8f0;margin:0 0 20px;font-size:0.95rem">Start a new chat? Your current conversation will remain in history.</p>
     <div style="display:flex;gap:10px;justify-content:flex-end">
-      <button id="confirm-cancel-btn" style="background:#2e3347;color:#e2e8f0;border:1px solid #4a5568;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:0.9rem">Cancel</button>
-      <button id="confirm-ok-btn" style="background:#e53e3e;color:white;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:0.9rem">New Chat</button>
+      <button id="confirm-cancel-btn" aria-label="Cancel — keep current conversation" style="background:#2e3347;color:#e2e8f0;border:1px solid #4a5568;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:0.9rem">Cancel</button>
+      <button id="confirm-ok-btn" aria-label="Confirm — start new conversation" style="background:#e53e3e;color:white;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:0.9rem">New Chat</button>
     </div>
   </div>
 </div>
@@ -339,7 +339,7 @@
       <h1>Claude Chat</h1>
       <span class="team-name" id="team-name"></span>
       <div class="header-right">
-        <select id="model-selector" title="Select model">
+        <select id="model-selector" title="Select model" aria-label="Select AI model">
           <option value="claude-haiku-4-5-20251001">Haiku</option>
           <option value="claude-sonnet-4-6" selected>Sonnet</option>
           <option value="claude-opus-4-5">Opus</option>
@@ -1057,6 +1057,8 @@
   function processTextLines(parent, text) {
     var lines = text.split('\n');
     var currentList = null;
+    var lastLi = null;           // B-050: last top-level li, for attaching nested lists
+    var currentNestedList = null; // B-050: active nested <ul> inside lastLi
     var currentBlockquote = null; // B-036: groups consecutive `> ` lines
     var pendingListClose = false; // B-029: deferred close on first blank line in a list
     var consecutiveBlanks = 0;   // B-029: two consecutive blanks force-close the list
@@ -1072,6 +1074,13 @@
 
     for (var i = 0; i < lines.length; i++) {
       var line = lines[i];
+
+      // B-046: normalize bullet variants (• U+2022, lone * not **) to `-`
+      // This lets all three formats flow through the existing `- ` branch.
+      line = line.replace(/^(\s*)•\s/, '$1- ');
+      if (/^(\s*)\*(?!\*) /.test(line)) {
+        line = line.replace(/^(\s*)\*(?!\*) /, '$1- ');
+      }
 
       // B-036: Blockquote line starting with `> `
       if (line.startsWith('> ') || line === '>') {
@@ -1187,6 +1196,22 @@
       // Non-blank line — reset consecutive blank counter
       consecutiveBlanks = 0;
 
+      // B-050: Indented list item (2 or 4 spaces + `- `) → nested <ul> inside lastLi
+      if (/^  - /.test(line) && currentList && currentList.tagName === 'UL') {
+        flushRegularLines();
+        pendingListClose = false;
+        consecutiveBlanks = 0;
+        if (!currentNestedList) {
+          currentNestedList = document.createElement('ul');
+          if (lastLi) lastLi.appendChild(currentNestedList);
+          else currentList.appendChild(currentNestedList);
+        }
+        var li = document.createElement('li');
+        appendInlineSegmentsSingleLine(li, line.replace(/^\s*- /, ''));
+        currentNestedList.appendChild(li);
+        continue;
+      }
+
       // Unordered list item: - item
       if (line.startsWith('- ')) {
         flushRegularLines();
@@ -1200,9 +1225,11 @@
             parent.appendChild(currentList);
           }
         }
+        currentNestedList = null; // B-050: reset nested context for each new top-level item
         var li = document.createElement('li');
         appendInlineSegmentsSingleLine(li, line.slice(2));
         currentList.appendChild(li);
+        lastLi = li; // B-050: track for potential nested list attachment
         continue;
       }
 
