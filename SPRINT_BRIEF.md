@@ -1,65 +1,55 @@
-# Sprint 9
+# Sprint 10
 
 Goal
-- B-009 Critical: Fix mobile sidebar — add close button + click-outside overlay so user is never trapped with sidebar open
-- B-010 High: Replace raw JSON API errors with human-readable messages
-- B-011 High: Add CSS for rendered markdown tables (borders, padding, header styling)
-- B-012 High: Fix stale history 404 UX — keep entry in sidebar, show explicit Remove button
-- B-015 Medium: Fix history delete button layout — replace float:right with flexbox
+- B-014 Medium: Fix mobile header — stop wrapping to two rows at narrow widths (target ≤56px header height at 400px)
+- B-016 Medium: Fix copy in non-HTTPS context — add fallback for clipboard API failure with user feedback
+- F-014 Low: Add relative timestamps to history sidebar entries (e.g. "2 hours ago", "yesterday")
+- F-015 Low: Add click-outside overlay to close mobile sidebar (semi-transparent backdrop)
+- F-016 Low: Copy button should copy original markdown source, not plain text
 
 Constraints
 - No two agents may modify the same files
-- Agent A owns: public/index.html CSS section + sidebar HTML + sidebar toggle JS
-- Agent B owns: public/index.html sendMessage() error handler + loadConversation() 404 branch + model init
+- Agent A owns: public/index.html CSS section (mobile header fix, sidebar overlay CSS)
+- Agent B owns: public/index.html JS section (copy fallback, timestamps, markdown copy source)
 
-## agentA-css-and-layout
-
-Objective
-Fix CSS and layout bugs in public/index.html
-
-Tasks
-1. B-009 Mobile sidebar close: Add a close button (`×`) inside `.sidebar` at the top. Add a `#sidebar-overlay` div (`position:fixed; inset:0; z-index:99; background:rgba(0,0,0,0.4); display:none`) that shows when sidebar opens and dismisses sidebar when clicked. Update hamburger JS to also toggle overlay visibility. The sidebar itself should be z-index:100.
-
-2. B-011 Table CSS: Add to the `<style>` block:
-```
-.bubble table { border-collapse: collapse; width: 100%; margin: 8px 0; }
-.bubble th, .bubble td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; font-size: 0.9em; }
-.bubble th { background: rgba(255,255,255,0.06); font-weight: 600; }
-.bubble tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
-```
-
-3. B-015 History entry flexbox: Change `.history-entry` to `display:flex; align-items:center; gap:6px`. Give the title `flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap`. Make delete button `flex-shrink:0`. Remove any `float:right` from the delete button.
-
-Acceptance Criteria
-- On mobile (~400px), sidebar can be closed via × button or tapping the overlay
-- A markdown table from Claude renders with visible borders and padding
-- History entry × button sits right-aligned without overlapping the title text
-
-## agentB-js-error-ux
+## agentA-mobile-and-overlay
 
 Objective
-Fix JavaScript UX bugs in public/index.html
+Fix mobile header layout and add sidebar click-outside overlay in public/index.html
 
 Tasks
-1. B-010 Friendly errors: In sendMessage() SSE error handling, replace raw JSON display with human-readable messages. Map known error types:
-   - authentication_error → "API key is invalid or not configured. Please contact your administrator."
-   - rate_limit_error → "Rate limit reached. Please wait a moment and try again."
-   - overloaded_error → "Claude is currently busy. Please try again in a few seconds."
-   - Network/fetch failure → "Could not reach the server. Check your connection and try again."
-   - Default → "Something went wrong. Please try again." with a small collapsed "Details" toggle showing the raw error for debugging.
+1. B-014 Mobile header: At ≤600px (or ≤400px via media query), prevent header from wrapping. Options:
+   - Move model selector out of the header into the main area (below thread, above input), OR
+   - Collapse model selector to an icon button on mobile that opens a small dropdown, OR
+   - Keep header single-row by reducing font sizes and padding so everything fits at 400px
+   Pick the simplest approach that keeps header ≤56px tall on mobile.
 
-2. B-012 Stale 404 UX: In loadConversation(), when response is 404, do NOT immediately remove from localStorage. Instead: show error bubble "This conversation is no longer available (server was restarted)." with a "Remove from history" button. When that button is clicked, remove from localStorage and re-render the list. Until then, keep the entry in the sidebar.
-
-3. B-013 Stale model guard: After setting modelSelector.value = savedModel, validate: if (modelSelector.value !== savedModel) { localStorage.removeItem('selectedModel'); } to clear stale IDs that don't match any option.
+2. F-015 Sidebar overlay: Add a `#sidebar-overlay` div (if not already present from Sprint 9) — `position: fixed; inset: 0; z-index: 99; background: rgba(0,0,0,0.4); display: none`. When sidebar opens, show it. When user clicks the overlay, close the sidebar. This gives mobile users an intuitive tap-outside-to-close gesture.
 
 Acceptance Criteria
-- A 401 API response shows "API key is invalid or not configured" not raw JSON
-- Clicking a 404 history entry shows error bubble with "Remove from history" button; entry stays in sidebar
-- Stale localStorage model IDs are cleared, not silently mismatched
+- Header is single-row (≤56px) at 400px viewport width
+- Tapping anywhere outside the open sidebar closes it on mobile
+
+## agentB-copy-and-timestamps
+
+Objective
+Improve copy button behavior and add timestamps to history sidebar in public/index.html
+
+Tasks
+1. B-016 Copy fallback: In the copy button click handler, after `navigator.clipboard.writeText()` fails (or in non-secure contexts), fall back to `document.execCommand('copy')` using a temporary textarea. If both fail, show a brief "Copy failed — HTTPS required" message where "Copied!" normally appears.
+
+2. F-016 Copy markdown source: Instead of copying `bubble.textContent` (rendered plain text), store the original markdown string on the bubble element as a `data-markdown` attribute when the SSE stream completes. Use that for copy. This preserves code blocks, table syntax, bold/italic etc.
+
+3. F-014 History timestamps: In `renderHistoryList()` / `pushConversationToHistory()`, store a `timestamp` (ISO string from `Date.now()`) alongside each history entry in localStorage. When rendering the sidebar, show a relative timestamp below each title: "just now" (<1min), "X min ago" (<1hr), "X hours ago" (<24hr), "yesterday", or the date for older entries. Update every 60 seconds via `setInterval`.
+
+Acceptance Criteria
+- Copy button works on HTTP (falls back gracefully, shows error if all methods fail)
+- Copying a Claude response with a code block preserves the fenced code block syntax
+- History entries show relative timestamps that update live
 
 ## Merge Order
-1. agentA-css-and-layout
-2. agentB-js-error-ux
+1. agentA-mobile-and-overlay
+2. agentB-copy-and-timestamps
 
 ## Merge Verification
 - node -e "require('fs').readFileSync('public/index.html','utf8'); console.log('HTML readable')"
