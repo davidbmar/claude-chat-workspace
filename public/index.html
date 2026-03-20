@@ -222,6 +222,29 @@
     .delete-btn { flex-shrink: 0; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 0 2px; line-height: 1; }
     .delete-btn:hover { color: var(--error); }
 
+    /* Scroll-to-bottom button — F-018 */
+    #scroll-btn {
+      position: fixed;
+      bottom: 80px;
+      right: 20px;
+      z-index: 50;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      background: var(--accent);
+      border: none;
+      color: white;
+      cursor: pointer;
+      display: none;
+      font-size: 18px;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      transition: opacity 0.15s;
+    }
+    #scroll-btn:hover { opacity: 0.85; }
+    #scroll-btn.visible { display: flex; }
+
     /* Sidebar overlay — covers content area on mobile when sidebar is open */
     #sidebar-overlay {
       display: none;
@@ -278,7 +301,7 @@
       header { flex-wrap: nowrap; padding: 10px 12px; gap: 6px; }
       header h1 { font-size: 14px; }
       header .logo { font-size: 16px; }
-      #model-selector { max-width: 100px; font-size: 11px; }
+      #model-selector { max-width: 130px; font-size: 11px; }
       #new-chat-btn { font-size: 11px; padding: 4px 6px; }
     }
   </style>
@@ -299,9 +322,9 @@
       <span class="team-name" id="team-name"></span>
       <div class="header-right">
         <select id="model-selector" title="Select model">
-          <option value="claude-haiku-4-5-20251001">Haiku &#x2014; fast</option>
-          <option value="claude-sonnet-4-6" selected>Sonnet &#x2014; balanced</option>
-          <option value="claude-opus-4-5">Opus &#x2014; powerful</option>
+          <option value="claude-haiku-4-5-20251001">Haiku</option>
+          <option value="claude-sonnet-4-6" selected>Sonnet</option>
+          <option value="claude-opus-4-5">Opus</option>
         </select>
         <button id="new-chat-btn" title="Start a new conversation">+ New Chat</button>
       </div>
@@ -314,6 +337,7 @@
       </div>
     </div>
 
+    <button id="scroll-btn" title="Scroll to bottom">&#8595;</button>
     <div id="input-area">
       <textarea id="msg-input" rows="1" placeholder="Message Claude (Enter to send, Shift+Enter for newline)"></textarea>
       <button id="send-btn" title="Send">&#9658;</button>
