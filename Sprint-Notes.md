@@ -1,9 +1,9 @@
-# Sprint 20 — Agent Notes
+# Sprint 21 — Agent Notes
 
-*Started: 2026-03-20 03:58 UTC*
+*Started: 2026-03-20 04:35 UTC*
 
 Phase 1 Agents: 1
-- agentA-generalize
+- agentA-mobile-polish
 
 Phase 2 Agents: 0
 (none)
@@ -12,22 +12,22 @@ Automated summaries from each agent are appended below as they complete.
 
 ---
 
-## agentA-generalize
+## agentA-mobile-polish
 
-*Completed: 2026-03-20 04:03 UTC*
+*Completed: 2026-03-20 04:37 UTC*
 
 **Files changed:**
-- `server.js` — added `TOOL_NAME`, `TOOL_ICON`, `TOOL_DESCRIPTION`, `TOOL_COLOR` constants + `GET /api/config` endpoint
-- `public/index.html` — all four tasks implemented
-- `docs/project-memory/sessions/S-2026-03-20-0402-generalize-tool-chat.md` — session doc
+- `public/index.html` — B-057: `.team-name { display: none; }` inside `@media (max-width: 480px)`; B-053: `aria-label` with title + em-dash + relativeTime on each history entry
+- `server.js` — F-020: expanded `app.listen` callback to add `[config]` startup log line
+- `docs/project-memory/sessions/S-2026-03-20-0436-mobile-polish-sprint21.md` — new session doc
 
 **Commands run:**
-- `npm audit --audit-level=high` → 0 vulnerabilities
-- `git push -u origin HEAD` → pushed `agentA-generalize`
+- `node --check server.js` → OK
+- `node -e "require('fs').readFileSync(...)"` → HTML readable
+- `git commit` + `git push -u origin HEAD`
 
-**Notes / follow-on:**
-- `SYSTEM_PROMPT` injection was already in `server.js` from a prior sprint — no change needed there
-- The `team-name` hostname logic is preserved as a fallback; `toolDescription` from config overrides it when set
-- `--tool-color` default is `#7c3aed` (purple per brief); existing `--accent: #4a9eff` (blue) remains for focus/hover borders — only send btn, user bubble, and scroll btn shift to `--tool-color`
-- B-055 title truncation uses class `app-title` added to `h1` so the 480px rule targets it specifically
+**Notes:**
+- The subtitle element uses class `.team-name` (not `.app-subtitle`) — confirmed by inspecting the HTML/JS
+- `relativeTime()` was already computed and used for the visible time span, so B-053 reuses it with no duplication
+- No docker/compose tests run (not available in this environment), but the brief's node syntax checks both pass
 
