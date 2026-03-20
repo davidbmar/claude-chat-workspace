@@ -466,7 +466,11 @@
       el.appendChild(content);
       el.appendChild(delBtn);
 
-      el.addEventListener('click', function () { loadConversation(entry.id); });
+      el.addEventListener('click', function () {
+        loadConversation(entry.id);
+        // B-030: auto-close sidebar on mobile after selecting a conversation
+        if (window.innerWidth <= 600) closeSidebar();
+      });
       historyList.appendChild(el);
     });
   }
@@ -781,7 +785,8 @@
     if (!text || sendBtn.disabled) return;
 
     var userBubble = addMsg('user');
-    userBubble.textContent = text;
+    // B-031: render inline markdown (**bold**, *italic*, `code`) in user bubbles
+    appendInlineSegmentsSingleLine(userBubble, text);
     input.value = '';
     input.style.height = 'auto';
 
@@ -968,11 +973,15 @@
 
   // Processes a text part line-by-line: detects headings (# ## ###), unordered lists (- item),
   // GFM pipe tables, and regular text.
-  // Contiguous list lines are grouped into a <ul>; heading lines become h1/h2/h3.
+  // Contiguous list lines are grouped into a <ul>/<ol>; heading lines become h1/h2/h3.
   // Inline formatting (bold/italic/code) is applied to all content via appendInlineSegmentsSingleLine.
+  // B-029: blank lines between list items do NOT close the list — only two consecutive blanks
+  // or a non-list structural element (heading/HR/table/code) will close it.
   function processTextLines(parent, text) {
     var lines = text.split('\n');
     var currentList = null;
+    var pendingListClose = false; // B-029: deferred close on first blank line in a list
+    var consecutiveBlanks = 0;   // B-029: two consecutive blanks force-close the list
     var regularLines = [];
 
     function flushRegularLines() {
@@ -990,6 +999,8 @@
       if (/^\|.+\|$/.test(line) && i + 1 < lines.length && /^\|[-| :]+\|$/.test(lines[i + 1])) {
         flushRegularLines();
         currentList = null;
+        pendingListClose = false;
+        consecutiveBlanks = 0;
 
         // Collect all contiguous pipe-delimited lines as the table block
         var tableLines = [];
@@ -1035,6 +1046,8 @@
       if (hm) {
         flushRegularLines();
         currentList = null;
+        pendingListClose = false;
+        consecutiveBlanks = 0;
         var hEl = document.createElement('h' + hm[1].length);
         appendInlineSegmentsSingleLine(hEl, hm[2]);
         parent.appendChild(hEl);
@@ -1046,16 +1059,47 @@
       if (trimmed === '---' || trimmed === '***') {
         flushRegularLines();
         currentList = null;
+        pendingListClose = false;
+        consecutiveBlanks = 0;
         parent.appendChild(document.createElement('hr'));
         continue;
       }
 
+      // B-029: Blank line handling — defer list close inside a list context
+      if (trimmed === '') {
+        if (currentList) {
+          consecutiveBlanks++;
+          if (consecutiveBlanks >= 2) {
+            // Two consecutive blanks: force-close the list
+            currentList = null;
+            pendingListClose = false;
+            consecutiveBlanks = 0;
+          } else {
+            pendingListClose = true;
+          }
+          // Skip adding to regularLines while inside list
+          continue;
+        }
+        consecutiveBlanks = 0;
+        regularLines.push(line);
+        continue;
+      }
+
+      // Non-blank line — reset consecutive blank counter
+      consecutiveBlanks = 0;
+
       // Unordered list item: - item
       if (line.startsWith('- ')) {
         flushRegularLines();
-        if (!currentList || currentList.tagName !== 'UL') {
-          currentList = document.createElement('ul');
-          parent.appendChild(currentList);
+        if (pendingListClose && currentList && currentList.tagName === 'UL') {
+          // Continue the existing UL across the blank line
+          pendingListClose = false;
+        } else {
+          if (pendingListClose) { currentList = null; pendingListClose = false; }
+          if (!currentList || currentList.tagName !== 'UL') {
+            currentList = document.createElement('ul');
+            parent.appendChild(currentList);
+          }
         }
         var li = document.createElement('li');
         appendInlineSegmentsSingleLine(li, line.slice(2));
@@ -1067,9 +1111,15 @@
       var olm = line.match(/^\d+\. (.*)/);
       if (olm) {
         flushRegularLines();
-        if (!currentList || currentList.tagName !== 'OL') {
-          currentList = document.createElement('ol');
-          parent.appendChild(currentList);
+        if (pendingListClose && currentList && currentList.tagName === 'OL') {
+          // Continue the existing OL across the blank line
+          pendingListClose = false;
+        } else {
+          if (pendingListClose) { currentList = null; pendingListClose = false; }
+          if (!currentList || currentList.tagName !== 'OL') {
+            currentList = document.createElement('ol');
+            parent.appendChild(currentList);
+          }
         }
         var li = document.createElement('li');
         appendInlineSegmentsSingleLine(li, olm[1]);
@@ -1077,8 +1127,9 @@
         continue;
       }
 
-      // Regular line — close list context
+      // Regular non-blank line — close list context (including any pending close)
       currentList = null;
+      pendingListClose = false;
       regularLines.push(line);
     }
 
