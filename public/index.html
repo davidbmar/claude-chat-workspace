@@ -18,6 +18,7 @@
       --accent: #4a9eff;
       --error: #ef4444;
       --radius: 12px;
+      --tool-color: #7c3aed;
     }
 
     html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 15px; }
@@ -99,7 +100,7 @@
       line-height: 1.55;
       word-break: break-word;
     }
-    .msg.user .bubble { background: var(--user-bubble); color: #fff; border-bottom-right-radius: 3px; white-space: pre-wrap; }
+    .msg.user .bubble { background: var(--tool-color); color: #fff; border-bottom-right-radius: 3px; }
     .msg.claude .bubble { background: var(--claude-bubble); color: var(--text); border: 1px solid var(--border); border-bottom-left-radius: 3px; }
 
     .msg-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
@@ -129,6 +130,7 @@
 
     #input-area {
       padding: 16px 20px 20px;
+      padding-bottom: max(20px, env(safe-area-inset-bottom, 20px));
       border-top: 1px solid var(--border);
       display: flex;
       gap: 10px;
@@ -157,7 +159,7 @@
     #msg-input::placeholder { color: var(--text-muted); }
 
     #send-btn {
-      background: var(--accent);
+      background: var(--tool-color);
       border: none;
       border-radius: 10px;
       color: #fff;
@@ -240,7 +242,7 @@
       border-radius: 50%;
       width: 36px;
       height: 36px;
-      background: var(--accent);
+      background: var(--tool-color);
       border: none;
       color: white;
       cursor: pointer;
@@ -292,6 +294,12 @@
     }
     #hamburger-btn:hover { color: var(--text); }
 
+    /* B-055: Mobile header — keep single row at 375px */
+    @media (max-width: 480px) {
+      #new-chat-btn span { display: none; }
+      .app-title { font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+    }
+
     @media (max-width: 600px) {
       #hamburger-btn { display: block; }
       #sidebar-close-btn { display: block; }
@@ -335,8 +343,8 @@
   <div id="chat-area">
     <header>
       <button id="hamburger-btn" title="Toggle sidebar" aria-label="Open conversation history">&#9776;</button>
-      <span class="logo">&#x1F4AC;</span>
-      <h1>Claude Chat</h1>
+      <span class="logo" id="app-logo">&#x1F4AC;</span>
+      <h1 id="app-title" class="app-title">Claude Chat</h1>
       <span class="team-name" id="team-name"></span>
       <div class="header-right">
         <select id="model-selector" title="Select model" aria-label="Select AI model">
@@ -344,13 +352,13 @@
           <option value="claude-sonnet-4-6" selected>Sonnet</option>
           <option value="claude-opus-4-5">Opus</option>
         </select>
-        <button id="new-chat-btn" title="Start a new conversation" aria-label="Start a new conversation">+ New Chat</button>
+        <button id="new-chat-btn" title="Start a new conversation" aria-label="Start a new conversation">+<span> New Chat</span></button>
       </div>
     </header>
 
     <div id="thread">
       <div id="empty-state">
-        <span class="big-icon">&#x1F4AC;</span>
+        <span class="big-icon" id="empty-state-icon">&#x1F4AC;</span>
         <p>Ask Claude anything to get started.</p>
       </div>
     </div>
@@ -366,6 +374,24 @@
 <script>
 (function () {
   'use strict';
+
+  // F-020: Tool config — populated from /api/config on load; used for icons and colors
+  var toolConfig = { toolName: 'Claude Chat', toolIcon: '💬', toolDescription: 'Chat with Claude', toolColor: '#7c3aed' };
+
+  // F-020: Fetch tool config and apply to DOM
+  fetch('/api/config').then(function(r) { return r.json(); }).then(function(cfg) {
+    toolConfig = cfg;
+    document.title = cfg.toolName;
+    document.getElementById('app-logo').textContent = cfg.toolIcon;
+    document.getElementById('app-title').textContent = cfg.toolName;
+    if (cfg.toolDescription) {
+      document.getElementById('team-name').textContent = cfg.toolDescription;
+    }
+    document.documentElement.style.setProperty('--tool-color', cfg.toolColor);
+    // Update empty-state icon if still visible
+    var esi = document.getElementById('empty-state-icon');
+    if (esi) esi.textContent = cfg.toolIcon;
+  }).catch(function() { /* keep defaults on error */ });
 
   // Stable conversation ID for this browser session — scopes history on the server
   var conversationId = crypto.randomUUID();
@@ -539,7 +565,8 @@
       es.id = 'empty-state';
       var icon = document.createElement('span');
       icon.className = 'big-icon';
-      icon.textContent = '\uD83D\uDCAC';
+      icon.id = 'empty-state-icon';
+      icon.textContent = toolConfig.toolIcon;
       var p = document.createElement('p');
       p.textContent = 'Ask Claude anything to get started.';
       es.appendChild(icon);
@@ -589,8 +616,8 @@
         var role = m.role === 'user' ? 'user' : 'claude';
         var bubble = addMsg(role);
         if (role === 'user') {
-          // B-031: render inline markdown in user bubbles loaded from history
-          appendInlineSegmentsSingleLine(bubble, typeof m.content === 'string' ? m.content : '');
+          // B-054: full markdown renderer for user bubbles loaded from history
+          renderTextInto(bubble, typeof m.content === 'string' ? m.content : '');
         } else {
           var mdText = typeof m.content === 'string' ? m.content : (m.content[0] && m.content[0].text) || '';
           renderTextInto(bubble, mdText);
@@ -613,7 +640,8 @@
     }
   }
 
-  // Show team segment from hostname: "jane-finance.ai.example.com" → "finance"
+  // Team segment from hostname (fallback when toolDescription is empty): "jane-finance.example.com" → "finance"
+  // Config fetch (above) will override this with toolDescription if set.
   var hostSlug = location.hostname.split('.')[0] || '';
   var dashIdx = hostSlug.indexOf('-');
   if (dashIdx !== -1) {
@@ -657,7 +685,8 @@
 
     var icon = document.createElement('span');
     icon.className = 'big-icon';
-    icon.textContent = '\uD83D\uDCAC';
+    icon.id = 'empty-state-icon';
+    icon.textContent = toolConfig.toolIcon;
 
     var p = document.createElement('p');
     p.textContent = 'Ask Claude anything to get started.';
@@ -848,8 +877,8 @@
     }
 
     var userBubble = addMsg('user');
-    // B-031: render inline markdown (**bold**, *italic*, `code`) in user bubbles
-    appendInlineSegmentsSingleLine(userBubble, text);
+    // B-054: full markdown renderer for user bubbles (headings, code blocks, lists, etc.)
+    renderTextInto(userBubble, text);
     input.value = '';
     input.style.height = 'auto';
 
