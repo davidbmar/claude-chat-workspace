@@ -298,6 +298,8 @@
     @media (max-width: 480px) {
       #new-chat-btn span { display: none; }
       .app-title { font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+      /* B-057: Hide subtitle at ≤480px so header fits in one compact row */
+      .team-name { display: none; }
     }
 
     @media (max-width: 600px) {
@@ -502,6 +504,10 @@
       var el = document.createElement('div');
       el.className = 'history-entry' + (entry.id === conversationId ? ' active' : '');
       el.title = entry.title ? stripMarkdown(entry.title) : '';
+      // B-053: include timestamp in aria-label so same-titled conversations are distinguishable
+      var entryLabel = entry.title ? stripMarkdown(entry.title) : '(untitled)';
+      if (entry.timestamp) entryLabel += ' \u2014 ' + relativeTime(entry.timestamp);
+      el.setAttribute('aria-label', entryLabel);
       el.setAttribute('tabindex', '0');
       el.setAttribute('role', 'button');
 
