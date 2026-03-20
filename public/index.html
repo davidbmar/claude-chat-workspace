@@ -366,6 +366,9 @@
   // Track whether the first message has been sent in the current conversation
   var firstMessageSent = false;
 
+  // B-034: true when the loaded conversation returned a 404 (stale/server-restarted)
+  var staleConversationError = false;
+
   // Currently selected model — updated by the model selector in the header
   var currentModel = 'claude-sonnet-4-6';
 
@@ -434,20 +437,29 @@
     return new Date(ts).toLocaleDateString();
   }
 
+  // B-035: strip markdown syntax from sidebar titles so old entries stored with
+  // raw **asterisks** display cleanly without requiring storage migration.
+  function stripMarkdown(text) {
+    return text.replace(/\*\*([^*]+)\*\*/g, '$1')
+               .replace(/\*([^*]+)\*/g, '$1')
+               .replace(/`([^`]+)`/g, '$1')
+               .replace(/^#+\s*/gm, '');
+  }
+
   function renderHistoryList() {
     while (historyList.firstChild) historyList.removeChild(historyList.firstChild);
     var history = getHistory();
     history.forEach(function (entry) {
       var el = document.createElement('div');
       el.className = 'history-entry' + (entry.id === conversationId ? ' active' : '');
-      el.title = entry.title || '';
+      el.title = entry.title ? stripMarkdown(entry.title) : '';
 
       var content = document.createElement('div');
       content.className = 'history-entry-content';
 
       var titleSpan = document.createElement('span');
       titleSpan.className = 'history-entry-title';
-      titleSpan.textContent = entry.title || '(untitled)';
+      titleSpan.textContent = entry.title ? stripMarkdown(entry.title) : '(untitled)';
       content.appendChild(titleSpan);
 
       if (entry.timestamp) {
@@ -517,6 +529,8 @@
       if (res.status === 404) {
         // Stale history entry — server restarted and lost this conversation.
         // Keep entry in sidebar; show error bubble with explicit Remove button.
+        // B-034: mark state so sendMessage can silently recover on next send.
+        staleConversationError = true;
         var errBubble = addMsg('claude', {isError: true});
         errBubble.closest('.msg').classList.add('error');
         errBubble.textContent = 'This conversation is no longer available (server was restarted).';
@@ -786,6 +800,14 @@
   async function sendMessage() {
     var text = input.value.trim();
     if (!text || sendBtn.disabled) return;
+
+    // B-034: if previous conversation was a 404, silently reset to a fresh conversation
+    if (staleConversationError) {
+      staleConversationError = false;
+      conversationId = crypto.randomUUID();
+      firstMessageSent = false;
+      while (thread.firstChild) thread.removeChild(thread.firstChild);
+    }
 
     var userBubble = addMsg('user');
     // B-031: render inline markdown (**bold**, *italic*, `code`) in user bubbles
