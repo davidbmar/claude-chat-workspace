@@ -1,4 +1,4 @@
-agentA-accessibility-and-rendering — Sprint 17
+agentA-list-and-a11y — Sprint 18
 
 Previous Sprint Summary
 ─────────────────────────────────────────
@@ -75,68 +75,58 @@ Completed assigned tasks.
 Sprint-Level Context
 
 Goal
-- B-036 High: Add blockquote rendering — `> text` lines should render as styled `<blockquote>` elements
-- B-037 Medium: Show language label on code blocks — parse language from fenced code opening and display as a badge
-- B-038 Medium: Escape key and backdrop click close the New Chat modal
-- B-040 Medium: Add aria-labels to all icon-only buttons (send, hamburger, scroll-to-bottom, delete, sidebar-close)
-- B-041 Low: Remove "Claude" attribution label from system 404 error messages
-- B-044 Low: Add semi-transparent backdrop behind New Chat modal
+- B-046 High: Fix unordered list rendering — `- item` lines must produce `<ul><li>` elements, not standalone `div.bubble` with a • character
+- B-048 Medium: Fix tab order — sidebar delete buttons dominate keyboard navigation; add tabindex="-1" to delete buttons and tabindex="0" + role="button" to history entries (fixes B-043 too)
+- B-043 Medium: History entries keyboard-navigable — add tabindex, role="button", and Enter/Space keypress handler to .history-entry divs
+- B-047 Low: Fix horizontal rule visibility — change `<hr>` border color from near-invisible dark to `rgba(255,255,255,0.15)` or `#4a5568`
+- B-049 Low: Add aria-label to Copy and New Chat buttons — replace title-only with explicit aria-label attributes
+- B-045 Low: Improve heading size differentiation — increase size steps and/or vary weight so H1/H2/H3 are visually distinct
 
 Constraints
-- One agent only — all changes in public/index.html (HTML + JS + CSS)
+- One agent only — all changes in public/index.html
 - Agent A owns everything
 
 
 Objective
-Blockquote rendering, code block language labels, modal UX polish, and accessibility aria-labels.
+Fix unordered list rendering (high priority regression), complete keyboard accessibility, and minor visual polish.
 
 Tasks
 
-1. B-036 Blockquote rendering:
-   In the markdown renderer, add a rule for lines starting with `> `. When such a line is encountered:
-   - Create a `<blockquote>` element
-   - Pass the text after `> ` through the inline renderer (bold/italic/code)
-   - Consecutive `> ` lines should be grouped into the same blockquote
-   - Add CSS: `blockquote { border-left: 3px solid #4a5568; margin: 8px 0; padding: 4px 12px; color: #a0aec0; font-style: italic; background: rgba(255,255,255,0.03); border-radius: 0 4px 4px 0; }`
+1. B-046 Unordered list rendering:
+   Find the markdown renderer branch that handles lines starting with `- ` (hyphen-space). Currently it creates `div.bubble` with a bullet character. Change it to:
+   - Accumulate consecutive `- ` lines into a single `<ul>` element (same pattern as ordered lists use `<ol>`)
+   - Each item becomes a `<li>` with inline markdown applied via `appendInlineSegmentsSingleLine()`
+   - Close the `<ul>` when a non-list line is encountered (same blank-line tolerance logic added in Sprint 14 for ordered lists)
+   - CSS: `ul { margin: 6px 0 6px 20px; padding: 0; list-style: disc; } ul li { margin: 2px 0; }`
 
-2. B-037 Code block language label:
-   In the fenced code block renderer, parse the language identifier from the opening fence line (e.g., ` ```python ` → `python`). If a language is found:
-   - Add a `data-language` attribute to the `<pre>` element
-   - Render a language label badge above (or top-right corner of) the code block
-   - CSS for badge: `position: absolute; top: 8px; right: 8px; font-size: 0.7rem; color: #718096; text-transform: uppercase; letter-spacing: 0.05em;`
-   - Set `position: relative` on the `<pre>` wrapper to anchor the badge
-   - Also set the language as a class on `<code>` (e.g., `class="language-python"`) for future syntax highlighting
+2. B-048 + B-043 Tab order and history keyboard nav:
+   - Find all `.delete-btn` elements (the × buttons on history entries). Add `tabindex="-1"` so they're removed from the tab sequence (still clickable with mouse, accessible via history entry focus).
+   - Find `.history-entry` divs. Add `tabindex="0"` and `role="button"` to each when created. Add a `keydown` listener: if `key === 'Enter' || key === ' '`, call the same click handler that loads the conversation.
+   - This makes history navigable: Tab reaches each entry, Enter/Space loads it, Tab again moves to the next.
 
-3. B-038 Escape + backdrop dismiss modal:
-   Find the `showConfirmModal()` function (or the modal show/hide logic). Add:
-   - A `keydown` listener for `Escape` that calls the cancel handler (remove listener after modal closes)
-   - A click listener on the modal backdrop element (the outer overlay div) that fires cancel when the click target is the backdrop itself (not the inner card) — `if (e.target === modalOverlay) cancel()`
+3. B-047 Horizontal rule visibility:
+   Find the CSS rule for `hr`. Change the border color from its current near-invisible dark value to `rgba(255, 255, 255, 0.15)`. If using border-top shorthand, set: `border: none; border-top: 1px solid rgba(255,255,255,0.15); margin: 12px 0;`
 
-4. B-040 Aria-labels on icon buttons:
-   Add `aria-label` to each icon-only button:
-   - `#send-btn`: `aria-label="Send message"`
-   - `#hamburger-btn` / sidebar toggle: `aria-label="Open conversation history"`
-   - `#scroll-btn`: `aria-label="Scroll to bottom"`
-   - Each `.delete-btn` (history entry delete): `aria-label="Delete conversation"`
-   - `#sidebar-close-btn`: `aria-label="Close sidebar"`
-   Also add `role="button"` to any of these that use `<div>` instead of `<button>`.
+4. B-049 Copy and New Chat aria-labels:
+   - Find `#new-chat-btn`. Add `aria-label="Start a new conversation"`.
+   - Find all copy buttons (class `.copy-btn` or similar). Add `aria-label="Copy message"` when created.
 
-5. B-041 Remove "Claude" label from error messages:
-   Find where the 404 error bubble is created. The error card is currently wrapped in (or preceded by) a sender label showing "Claude". Remove the label for error/system messages — only real Claude responses should have the attribution label.
-
-6. B-044 Modal backdrop:
-   The `#confirm-modal` overlay div should have a semi-transparent background. Check its CSS — it should have `background: rgba(0,0,0,0.5)` on the outer overlay. If this is missing or set to transparent, add it. Also ensure it uses `display: flex` (not `display: block`) when visible so the inner card centers correctly.
+5. B-045 Heading differentiation:
+   Update heading CSS to create clearer visual hierarchy:
+   - H1: `font-size: 1.5rem; font-weight: 700; margin: 16px 0 8px;`
+   - H2: `font-size: 1.25rem; font-weight: 600; margin: 14px 0 6px; color: #cbd5e0;`
+   - H3: `font-size: 1.05rem; font-weight: 600; margin: 12px 0 4px; color: #a0aec0; text-transform: uppercase; letter-spacing: 0.04em;`
+   This gives H1 bold weight, H2 slightly muted color, H3 small-caps treatment.
 
 Acceptance Criteria
-- Ask Claude for a response with `> blockquote text` — a styled left-bordered blockquote renders instead of `&gt;` literal text
-- Ask for a ```python code block — a "PYTHON" language badge appears in the top-right corner of the block
-- Open New Chat modal, press Escape → modal closes. Click the dark backdrop area → modal closes. Click the card itself → modal stays open.
-- Tab through the page — all interactive controls have descriptive screen-reader labels (verify with browser accessibility inspector)
-- 404 stale conversation error card shows no "Claude" label above it
-- New Chat modal has a visible dark semi-transparent backdrop behind the card
+- Ask Claude for a bulleted list — renders as proper `<ul><li>` with indentation, not flat divs with • characters
+- Tab through the page: delete buttons are skipped; history entries are reachable; pressing Enter on a history entry loads that conversation
+- A response containing `---` shows a visible horizontal line dividing sections
+- The "+ New Chat" button and Copy buttons are announced correctly by screen readers (aria-label present)
+- H1, H2, H3 headings in Claude responses are visually distinct at a glance
 
 ## Merge Order
-1. agentA-accessibility-and-rendering
+1. agentA-list-and-a11y
 
 ## Merge Verification
 - node -e "require('fs').readFileSync('public/index.html','utf8'); console.log('HTML readable')"
