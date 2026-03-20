@@ -1,9 +1,9 @@
-# Sprint 15 — Agent Notes
+# Sprint 16 — Agent Notes
 
-*Started: 2026-03-20 02:06 UTC*
+*Started: 2026-03-20 02:23 UTC*
 
 Phase 1 Agents: 1
-- agentA-polish
+- agentA-error-ux
 
 Phase 2 Agents: 0
 (none)
@@ -12,29 +12,24 @@ Automated summaries from each agent are appended below as they complete.
 
 ---
 
-## agentA-polish
+## agentA-error-ux
 
-*Completed: 2026-03-20 02:08 UTC*
+*Completed: 2026-03-20 02:25 UTC*
 
 **Files changed**
-- `public/index.html` — three targeted edits
-- `docs/project-memory/sessions/S-2026-03-20-0207-polish-sprint15.md` — new session doc
+- `public/index.html` — two targeted changes:
+  - **B-034**: Added `staleConversationError` flag (line ~370). Set to `true` in the 404 branch of `loadConversation()`. At the top of `sendMessage()`, if the flag is set, silently clears the thread, generates a fresh `conversationId`, resets `firstMessageSent`, and clears the flag — so the send proceeds as a brand-new conversation.
+  - **B-035**: Added `stripMarkdown()` helper before `renderHistoryList()`. Applied to both `el.title` (tooltip) and `titleSpan.textContent` so all sidebar titles — including old entries stored with `**asterisks**` — render clean text.
+- `docs/project-memory/sessions/S-2026-03-20-0225-error-ux-fixes.md` — session doc
 
 **Commands run**
-- `git pull` (no remote tracking, branch is new)
-- `node -e "require('fs').readFileSync(...)"` — HTML readability check ✅
-- `npm audit --audit-level=high` — 0 vulnerabilities ✅
-- `git add / git commit / git push`
+- `git fetch origin`
+- `node -e "require('fs').readFileSync(...)"` — HTML readable ✓
+- `npm audit --audit-level=high` — 0 vulnerabilities ✓
+- `git commit` + `git push -u origin HEAD`
 
-**Changes made**
-
-| Bug | Fix |
-|-----|-----|
-| B-031 | `loadConversation` user bubble: replaced `bubble.textContent = m.content` with `appendInlineSegmentsSingleLine(bubble, ...)` — now mirrors `sendMessage` behavior |
-| B-032 | Sidebar title: regex chain strips `**bold**`, `*italic*`, `` `code` ``, `# headings` before `slice(0,40)` |
-| B-033 | `.bubble pre` CSS: added `max-width: 100%; box-sizing: border-box` — prevents code block overflow at 400px viewport |
-
-**Notes / follow-on**
-- No follow-on work needed; all three fixes are self-contained in `index.html`.
-- The `typeof m.content === 'string'` guard in B-031 is defensive — user messages are always strings today, but the Claude messages API can return either strings or content arrays, so the guard future-proofs against accidental misuse.
+**Notes**
+- Both fixes are minimal and non-breaking; no API changes, no new dependencies
+- B-034 Option B chosen per brief: user intent (typing after error = wants to continue chatting) maps cleanly to silent reset
+- The `stripMarkdown` regex is the same set used in B-032, ensuring consistent behavior across new and retroactive titles
 
