@@ -133,7 +133,10 @@ app.post('/api/chat', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 8080;
-const server = app.listen(PORT, () => console.log(`Claude Chat listening on :${PORT}`));
+const server = app.listen(PORT, () => {
+  console.log(`Claude Chat listening on :${PORT}`);
+  console.log(`[config] toolName=${TOOL_NAME} toolIcon=${TOOL_ICON} toolColor=${TOOL_COLOR} systemPrompt=${process.env.SYSTEM_PROMPT ? 'SET' : 'not set'}`);
+});
 
 function shutdown() {
   server.close(() => process.exit(0));
